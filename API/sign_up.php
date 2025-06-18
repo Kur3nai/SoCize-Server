@@ -125,7 +125,6 @@ function main(array $db_creds) {
     try {
         $required_fields = ["username", "role_id", "password", "email", "phone_number"];
         try {
-            
         // Get the raw POST data
         $json_input = file_get_contents('php://input');
         
