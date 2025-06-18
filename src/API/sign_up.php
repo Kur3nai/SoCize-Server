@@ -1,14 +1,26 @@
 <?php declare(strict_types=1);
 
+error_reporting(0);
+
 try {
     require_once "../Utility/ErrorLogging.php";
+
+} catch(Error) {
+    http_response_code(500);
+    exit;
+
+}
+
+try {
     require_once "../Utility/ResponseHelper.php";
     require_once "../Utility/FormatChecker.php";
     require_once "../Config/DatabaseConfig.php";
+
 } catch (Error $e) {
     log_error($e->getMessage());
     http_response_code(500);
     exit;
+
 }
 
 class User {
@@ -123,82 +135,70 @@ function add_user_to_db(mysqli|bool $conn, User $user): void {
  */
 function main(array $db_creds) {
     try {
-        $required_fields = ["username", "role_id", "password", "email", "phone_number"];
-        try {
-        // Get the raw POST data
-        $json_input = file_get_contents('php://input');
-        
-        // Decode the JSON data into an associative array
-        $data_received = json_decode($json_input, true);
+        // Validate incoming JSON payload
+        $required_fields = ["username", "password", "email", "phone_number"];
+        $data_received = verifyJsonInput($required_fields);
 
-        // Check if decoding was successful
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            send_api_response(Response::createErrorResponse("Invalid JSON input"));
-            return;
-        }
-
-        // Validate required fields
-        $required_fields = ["username", "role_id", "password", "email", "phone_number"];
-        foreach ($required_fields as $field) {
-            if (!isset($data_received[$field])) {
-                send_api_response(Response::createErrorResponse("Missing required field: $field"));
-                return;
-            }
-        }
-
-        $validationErrors = [
-            "username" => null,
-            "role_id" => null,
-            "password" => null,
-            "email" => null,
-            "phoneNumber" => null
-        ];
+        $errors = new ValidationError();
 
         // Validate user input formats
         if (!isValidUsername($data_received["username"])) {
-            $validationErrors["username"] = "Invalid username format";
+            $errors->setUsernameError("Invalid username format");
         }
 
         if (!isValidPassword($data_received["password"])) {
-            $validationErrors["password"] = "Invalid password format";
+            $errors->setPasswordError("Invalid password format");
         }
 
         if (!isValidEmail($data_received["email"])) {
-            $validationErrors["email"] = "Invalid email format";
+            $errors->setEmailError("Invalid email format");
         }
 
-        if (!isValidPhoneNumber($data_received["phone_number"])) {
-            $validationErrors["phoneNumber"] = "Invalid phone number format";
+if (!isValidPhoneNumber($data_received["phone_number"])) {
+            $errors->setPhoneNumberError("Invalid phone number format");
         }
 
-        // If any validation error exists, respond with them
-        if (array_filter($validationErrors)) {
-            send_api_response(Response::createValidationErrorResponse($validationErrors));
+        if ($errors->hasErrors()) {
+            send_api_response([
+                "success" => false,
+                "validationError" => [
+                    "username" => $errors->username,
+                    "password" => $errors->password,
+                    "email" => $errors->email,
+                    "phoneNumber" => $errors->phoneNumber
+                ]
+            ], BAD_REQUEST);
         }
 
-        // $hashed_password = get_password_hash($data_received["password"]);
-        // if (!$hashed_password) {
-        //     log_error("Unable to get password hash");
-        //     send_api_response(Response::createErrorResponse("Something went wrong on the server..."));
-        // }
+        $hashed_password = get_password_hash($data_received["password"]);
+        if (!$hashed_password) {
+            log_error("Unable to get password hash");
+            send_api_response(["success" => false, "errorMessage" => "Something went wrong on the server..."], INTERNAL_ERROR);
+        }
 
-        // $conn = mysqli_connect(...$db_creds);
-        // $user = new User($data_received["username"], $data_received["role_id"], $hashed_password, $data_received["email"], $data_received["phone_number"]);
-        // add_user_to_db($conn, $user);
+        $conn = mysqli_connect(...$db_creds);
+        if (!$conn) {
+            send_api_response(["success" => false, "errorMessage" => "Database connection failed"], INTERNAL_ERROR);
+        }
 
-        send_api_response(Response::createSuccessResponse());
+        $role_id = 'user'; 
+
+        $user = new User($data_received["username"], $role_id, $hashed_password, $data_received["email"], $data_received["phone_number"]);
+        
+        add_user_to_db($conn, $user);
+
+        send_api_response(["success" => true], OK);
 
     } catch (Exception $e) {
         log_error($e->getMessage());
-        send_api_response(Response::createErrorResponse("Something went wrong on the server..."));
+        send_api_response(["success" => false, "errorMessage" => "Something went wrong on the server..."], INTERNAL_ERROR);
 
     } catch (Error $err) {
         log_error($err->getMessage());
-        send_api_response(Response::createErrorResponse("Something went wrong on the server..."));
+        send_api_response(["success" => false, "errorMessage" => "Something went wrong on the server..."], INTERNAL_ERROR);
     }
 }
 
-// Execute the main function with the DB credentials
 main($db_credentials);
 
 ?>
