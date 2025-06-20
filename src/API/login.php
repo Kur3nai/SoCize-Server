@@ -1,17 +1,27 @@
 <?php declare(strict_types=1);
 
-error_reporting(0); // To not display error message to client
+error_reporting(0);
 
 try {
     require_once "../Utility/ErrorLogging.php";
+
+} catch(Error) {
+    http_response_code(500);
+    exit;
+
+}
+
+try {
     require_once "../Utility/ResponseHelper.php";
     require_once "../Utility/FormatChecker.php";
     require_once "../Config/DatabaseConfig.php";
-    require_once "../Utility/RoleCheck.php";
+    require_once "../Config/RoleCheck.php";
+
 } catch (Error $e) {
     log_error($e->getMessage());
     http_response_code(500);
     exit;
+
 }
 
 class User {
