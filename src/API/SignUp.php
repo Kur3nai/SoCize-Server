@@ -69,16 +69,12 @@ try {
     if (function_exists('log_error')) {
         log_error("Initialization failed: " . $e->getMessage());
     }
-    die(json_encode([
-        'success' => false,
-        'error' => 'System initialization error',
-        'validationError' => null
-    ]));
+    exit(json_encode(SignUpResponse::createErrorResponse("Something went wrong on the server..")));
 }
 
 function add_user_to_db(mysqli|bool $conn, string $username, string $password, string $email, string $phone_number) : void {
     try {
-        $sql_query = "CALL add_new_user(?,?,?,?)";
+        $sql_query = "CALL create_user_account(?,?,?,?)";
 
         if(!$conn) {
             throw new Exception("Unable to connect to database");
@@ -170,29 +166,16 @@ function Main($db_credentials) {
             $validation->setPhoneNumberError($error);
         }
 
-        if ($validation->hasErrors()) {
-            send_api_response([
-                'success' => false,
-                'errorMessage' => null,
-                'validationError' => [
-                    'username' => $validation->username,
-                    'password' => $validation->password,
-                    'email' => $validation->email,
-                    'phoneNumber' => $validation->phoneNumber
-                ]
-            ]);
-            return;
+        if($validation->hasErrors()) {
+            $response = new SignUpResponse(false, null, $validation);
+            send_api_response($response);
         }
 
         $hashed_password = createHashedPassword($requestData["password"]);
 
         if(!$hashed_password) {
-            log_error("Unable to get password hash");
-            send_api_response([
-                'success' => false,
-                'errorMessage' => 'unable to Hash, Server Error',
-                'validationError' => null
-            ]);
+            $response = SignUpResponse::createErrorResponse("Something went wrong on the server..");
+            send_api_response($response);
             return;
         }
 

@@ -55,15 +55,6 @@ function send_api_response(mixed $response): void {
 
 
 function verifyPostMethod(): void {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        http_response_code(405);
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => false,
-            'error' => 'Only POST requests are allowed',
-            'validationError' => null
-        ]);
-        exit;
-    }
+    return $_SERVER['REQUEST_METHOD'] === 'POST';
 }
 
