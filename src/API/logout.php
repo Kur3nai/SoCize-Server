@@ -1,13 +1,14 @@
 <?php declare(strict_types=1);
 
-error_reporting(0); // To not display error message to client
+error_reporting(0);
 
 try {
     require_once "../Utility/ErrorLogging.php";
 
-} catch (Error) {
+} catch(Error) {
     http_response_code(500);
     exit;
+
 }
 
 try {
