@@ -46,7 +46,6 @@ function main() : void {
     }
 
     delete_session_data();
-    http_response_code(OK);
     exit; 
 }
 

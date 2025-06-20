@@ -8,10 +8,8 @@ date_default_timezone_set('Asia/Kuala_Lumpur');
  * 
  */
 
-function log_error(string $error) : void{
-    $path = "../Log/ErrorLogs.txt";
-
-    $error_message = date('Y-m-d H:i:s') . " -> " . $error . "\n";
-    file_put_contents($path, $error_message, FILE_APPEND);
+function log_error(string $message): void {
+    $logMessage = date('[Y-m-d H:i:s]') . " ERROR: " . $message . PHP_EOL;
+    file_put_contents(__DIR__ . '../logs/ErrorLogs.txt', $logMessage, FILE_APPEND);
 }
 ?>

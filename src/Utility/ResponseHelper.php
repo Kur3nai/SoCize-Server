@@ -5,11 +5,41 @@
  *
  * @return mixed Returns an associative array if valid, otherwise null.
  */
-function receive_json_input(): mixed {
-    $raw = file_get_contents("php://input");
-    return json_decode($raw, true);
-}
+function fetch_json_data(array $requiredKeys): array {
+    $jsonInput = file_get_contents("php://input");
+    if ($jsonInput === false) {
+        throw new Exception("Failed to read input data");
+    }
 
+    $data = json_decode($jsonInput, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception("Invalid JSON input: " . json_last_error_msg());
+    }
+
+    if (!is_array($data)) {
+        throw new Exception("Input must be a JSON object");
+    }
+
+    if (count($data) !== count($requiredKeys)) {
+        throw new Exception(sprintf(
+            "Invalid number of fields. Expected %d, got %d",
+            count($requiredKeys),
+            count($data)
+        ));
+    }
+
+    foreach ($requiredKeys as $field) {
+        if (!array_key_exists($field, $data)) {
+            throw new Exception("Missing required field: " . $field);
+        }
+        
+        if (empty($data[$field])) {
+            throw new Exception("Field cannot be empty: " . $field);
+        }
+    }
+
+    return $data;
+}
 
 /**
  * Sends a JSON API response in the specified format.
@@ -17,41 +47,23 @@ function receive_json_input(): mixed {
  * @param mixed $response
  * @param int $statusCode
  */
-function send_api_response(mixed $response, int $statusCode = HTTP_OK): void {
+function send_api_response(mixed $response): void {
     header('Content-Type: application/json');
-    http_response_code($statusCode);
     echo json_encode($response);
     exit;
 }
 
-/**
- * Validates incoming JSON payload by ensuring exact match with required fields.
- *
- * Rules:
- * - Must decode into a valid associative array
- * - Must contain exactly the keys listed in $requiredKeys
- *
- * @param array $requiredKeys List of expected field names
- * @return array Parsed and validated input
- */
-function verifyJsonInput(array $requiredKeys): array {
-    $input = receive_json_input();
 
-    if (!is_array($input)) {
-        throw new Exception("JSON decoding failed");
+function verifyPostMethod(): void {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'error' => 'Only POST requests are allowed',
+            'validationError' => null
+        ]);
+        exit;
     }
-
-    if (count($input) !== count($requiredKeys)) {
-        outputJsonResponse("Invalid number of fields provided", HTTP_BAD_REQUEST);
-    }
-
-    foreach ($requiredKeys as $field) {
-        if (!array_key_exists($field, $input)) {
-            outputJsonResponse("Missing expected field: {$field}", HTTP_BAD_REQUEST);
-        }
-    }
-
-    return $input;
 }
 
-?>
