@@ -10,11 +10,7 @@ class ValidationHelper {
         if ($input === null) {
             return null;
         }
-        
-        $input = trim($input);
-        
-        $input = htmlspecialchars($input, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        
+        $input = trim($input);        
         return $input;
     }
 
