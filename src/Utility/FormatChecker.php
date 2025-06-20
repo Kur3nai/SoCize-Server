@@ -103,12 +103,12 @@ function isValidUsername(string $user): bool {
  * @param string $pass
  * @return bool
  */
-function isValidPassword(string $pass): bool {
+function isValidPassword(string $pass): void {
     $length = strlen($pass);
     $symbolIncluded = false;
 
     if ($length < 8 || $length > 30) {
-        return false;
+        throw new Exception("STupid bich");
     }
 
     for ($i = 0; $i < $length; $i++) {

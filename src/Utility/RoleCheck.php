@@ -37,7 +37,17 @@ function is_logged_in() : bool {
     return true;
 }
 
-
+/**
+ * Checks the login status of the user. 
+ * This function combines the whole logic of checking if the user is logged in or not.
+ * 
+ * Note :
+ * 1. This function will call `session_start()`
+ * 
+ * @see has_session() For checking if user submitted a valid php session id cookie
+ * @see is_logged_in() For checking if the user session contains the required session variables
+ * @return bool true if the user is logged in, else false
+ */
 function check_login_status() : bool {
     // Checks if the request contains a php session id cookie first before calling session_start()
     // to avoid creating a new session unintentionally
@@ -48,6 +58,10 @@ function check_login_status() : bool {
     session_start();
 
     if(!is_logged_in()) {
+        return false;
+    }
+
+    if($_SESSION["csrf_token"] !== $_COOKIE["csrf_token"]) {
         return false;
     }
 

@@ -1,58 +1,25 @@
 <?php
 
-// HTTP status code constants
-const OK = 200;
-const BAD_REQUEST = 400;
-const UNAUTHORIZED = 401;
-const NOT_FOUND = 404;
-const CONFLICT = 409;
-const INTERNAL_ERROR = 500;
-
 /**
  * Retrieves and decodes raw JSON data from the request body.
  *
  * @return mixed Returns an associative array if valid, otherwise null.
  */
-function receiveJsonInput(): mixed {
+function receive_json_input(): mixed {
     $raw = file_get_contents("php://input");
     return json_decode($raw, true);
 }
 
 
-// /**
-//  * Sends a JSON API response in the specified format.
-//  *
-//  * @param Response $response
-//  */
-// function send_api_response(Response $response): void {
-//     header('Content-Type: application/json');
-//     echo json_encode($response);
-//     exit;
-// }
-
 /**
  * Sends a JSON API response in the specified format.
  *
- * @param array $response
+ * @param mixed $response
  * @param int $statusCode
  */
-function send_api_response(array $response, int $statusCode = HTTP_OK): void {
+function send_api_response(mixed $response, int $statusCode = HTTP_OK): void {
     header('Content-Type: application/json');
     http_response_code($statusCode);
-    echo json_encode($response);
-    exit;
-}
-
-/**
- * Sends a structured JSON response and halts script execution.
- *
- * @param mixed $content The content to return in the response.
- * @param int $statusCode The HTTP status code to include in the response.
- */
-function outputJsonResponse(mixed $content, int $statusCode): void {
-    header("Content-Type: application/json");
-    http_response_code($statusCode);
-
     echo json_encode($response);
     exit;
 }
@@ -68,10 +35,10 @@ function outputJsonResponse(mixed $content, int $statusCode): void {
  * @return array Parsed and validated input
  */
 function verifyJsonInput(array $requiredKeys): array {
-    $input = receiveJsonInput();
+    $input = receive_json_input();
 
     if (!is_array($input)) {
-        outputJsonResponse("JSON decoding failed", HTTP_BAD_REQUEST);
+        throw new Exception("JSON decoding failed");
     }
 
     if (count($input) !== count($requiredKeys)) {
