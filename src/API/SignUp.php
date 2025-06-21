@@ -96,39 +96,28 @@ function add_user_to_db(mysqli|bool $conn, string $username, string $password, s
 
     } catch(mysqli_sql_exception $sql_e) {
         if($sql_e->getCode() == 1062) {
-            echo json_encode([
-                'success' => false,
-                'errorMessage' => 'Username already exists',
-                'validationError' => null
-            ]);
+            $response = SignUpResponse::createErrorResponse("Username already exist..");
+            send_api_response($response);
+            return;
             exit;
         } else {
             log_error($sql_e->getMessage());
-            echo json_encode([
-                'success' => false,
-                'errorMessage' => 'Something went wrong on the server...',
-                'validationError' => null
-            ]);
-            exit;
+            $response = SignUpResponse::createErrorResponse("Something went wrong on the server..");
+            send_api_response($response);
+            return;
         }
 
     } catch (Exception $e) {
         log_error($e->getMessage());
-        echo json_encode([
-            'success' => false,
-            'errorMessage' => 'Something went wrong on the server...',
-            'validationError' => null
-        ]);
-        exit;
+        $response = SignUpResponse::createErrorResponse("Something went wrong on the server..");
+        send_api_response($response);
+        return;
 
     } catch(Error $err) {
         log_error($err->getMessage());
-        echo json_encode([
-            'success' => false,
-            'errorMessage' => 'Something went wrong on the server...',
-            'validationError' => null
-        ]);
-        exit;
+        $response = SignUpResponse::createErrorResponse("Something went wrong on the server..");
+        send_api_response($response);
+        return;
 
     } finally {
         if(isset($stmt)) {
@@ -181,11 +170,8 @@ function Main($db_credentials) {
 
         $conn = mysqli_connect(...$db_credentials);
         if (!$conn) {
-            send_api_response([
-                'success' => false,
-                'errorMessage' => 'Something went wrong on the server...',
-                'validationError' => null
-            ]);
+            $response = SignUpResponse::createErrorResponse("Something went wrong on the server..");
+            send_api_response($response);
             return;
         }
 
@@ -199,11 +185,9 @@ function Main($db_credentials) {
 
     } catch (Exception $e) {
         log_error("Application error: " . $e->getMessage());
-        send_api_response([
-            'success' => false,
-            'errorMessage' => 'Something went wrong on the server... or fields may be empty',
-            'validationError' => null
-        ]);
+        $response = SignUpResponse::createErrorResponse("Something went wrong on the server..");
+        send_api_response($response);
+        return;
     }
 }
 

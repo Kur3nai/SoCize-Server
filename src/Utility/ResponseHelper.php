@@ -54,7 +54,7 @@ function send_api_response(mixed $response): void {
 }
 
 
-function verifyPostMethod(): void {
+function verifyPostMethod(): bool {
     return $_SERVER['REQUEST_METHOD'] === 'POST';
 }
 
