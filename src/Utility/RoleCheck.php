@@ -49,8 +49,6 @@ function is_logged_in() : bool {
  * @return bool true if the user is logged in, else false
  */
 function check_login_status() : bool {
-    // Checks if the request contains a php session id cookie first before calling session_start()
-    // to avoid creating a new session unintentionally
     if(!has_session()) {
         return false;
     }
