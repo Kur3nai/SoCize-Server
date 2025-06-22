@@ -8,7 +8,7 @@ class FileDownloadResponse {
     public function __construct(bool $success, ?string $errorMessage, ?array $files = null) {
         $this->success = $success;
         $this->errorMessage = $errorMessage;
-        $this->files = $files;
+        $this->files = $success ? ($files ?? []) : null; // Enforce empty array for success, null for failure
     }
 
     public static function createErrorResponse(string $errorMessage) {
@@ -43,7 +43,7 @@ try {
     exit(json_encode(FileDownloadResponse::createErrorResponse("Initialization failed")));
 }
 
-function get_user_files(mysqli $conn, string $username): ?array {
+function get_user_files(mysqli $conn, string $username): array {
     try {
         $stmt = mysqli_prepare($conn, "CALL get_user_files(?)");
         if (!$stmt) {
@@ -64,72 +64,67 @@ function get_user_files(mysqli $conn, string $username): ?array {
         return $files;
     } catch (mysqli_sql_exception $e) {
         log_error("Database error: " . $e->getMessage());
-        return null;
+        throw $e; // Re-throw to be caught in Main()
     }
 }
 
+function verify_session(string $sessionId): ?array {
+    if (!check_login_status()) {
+        return null;
+    }
 
-// Later need to update the one inside the SessionHelper.php
+    return [
+        'username' => $_SESSION['username'],
+        'csrf_token' => $_SESSION['csrf_token']
+    ];
+}
 
-// function verify_session(string $sessionId): ?array {
-//     if (!check_login_status()) {
-//         return null;
-//     }
-
-//     return [
-//         'username' => $_SESSION['username'],
-//         'csrf_token' => $_SESSION['csrf_token']
-//     ];
-// }
+function verifyPostMethod(): bool {
+    return $_SERVER['REQUEST_METHOD'] === 'POST';
+}
 
 function Main($db_credentials) {
     try {
         if (!verifyPostMethod()) {
-            send_api_response(FileDownloadResponse::createErrorResponse("Something is wrong with the server...."));
+            send_api_response(new FileDownloadResponse(false, "Only POST requests allowed"));
             return;
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
         
         if (!isset($input['sessionId'])) {
-            send_api_response(FileDownloadResponse::createErrorResponse("User is not logged in.."));
+            send_api_response(new FileDownloadResponse(false, "Missing sessionId"));
             return;
         }
 
         $sessionId = $input['sessionId'];
         $session = verify_session($sessionId);
         if (!$session || !isset($session['username'])) {
-            send_api_response(FileDownloadResponse::createErrorResponse("User is not logged in..."));
+            send_api_response(new FileDownloadResponse(false, "Session has expired, please login or relogin to continue using the service."));
             return;
         }
 
         $conn = mysqli_connect(...$db_credentials);
         if (!$conn) {
-            send_api_response(FileDownloadResponse::createErrorResponse("Something is wrong with the server...."));
+            send_api_response(new FileDownloadResponse(false, "Database connection failed"));
             return;
         }
 
-        $fileObjects = get_user_files($conn, $session['username']);
-        if ($fileObjects === null) {
-            send_api_response(FileDownloadResponse::createErrorResponse("Something is wrong with the server...."));
-            mysqli_close($conn);
-            return;
-        }
-
-        $formattedFiles = [];
-        foreach ($fileObjects as $file) {
-            $formattedFiles[] = $file->toDownloadFormat();
+        try {
+            $fileObjects = get_user_files($conn, $session['username']);
+            $formattedFiles = array_map(fn($file) => $file->toDownloadFormat(), $fileObjects);
+            send_api_response(new FileDownloadResponse(true, null, $formattedFiles));
+        } catch (Exception $e) {
+            send_api_response(new FileDownloadResponse(false, "Failed to retrieve files"));
         }
 
         mysqli_close($conn);
-        send_api_response(new FileDownloadResponse(true, null, $formattedFiles));
-
     } catch (Exception $e) {
         if (isset($conn)) {
             mysqli_close($conn);
         }
         log_error("Application error: " . $e->getMessage());
-        send_api_response(FileDownloadResponse::createErrorResponse("Something is wrong with the server...."));
+        send_api_response(new FileDownloadResponse(false, "Internal server error"));
     }
 }
 
