@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-class ValidationError {
+class SignInValidationError {
     public ?string $username;
     public ?string $password;
 
@@ -27,14 +27,14 @@ class ValidationError {
     }
 }
 
-class LoginResponse {
+class SignInResponse {
     public bool $success;
     public ?string $sessionId;
     public ?string $role;
     public ?string $errorMessage;
-    public ?ValidationError $validationError;
+    public ?SignInValidationError $validationError;
 
-    public function __construct(bool $success, ?string $sessionId, ?string $role, ?string $errorMessage, ?ValidationError $validationError) {
+    public function __construct(bool $success, ?string $sessionId, ?string $role, ?string $errorMessage, ?SignInValidationError $validationError) {
         $this->success = $success;
         $this->sessionId = $sessionId;
         $this->role = $role;
@@ -43,7 +43,7 @@ class LoginResponse {
     }
 
     public static function createErrorResponse(string $errorMessage) {
-        return new LoginResponse(false, null, null, $errorMessage, null);
+        return new SignInResponse(false, null, null, $errorMessage, null);
     }
 }
 
@@ -51,23 +51,21 @@ error_reporting(0);
 
 try {
     require_once "../Utility/ErrorLogging.php";
-    require_once "../Utility/RequestResponseHelper.php";
-    require_once "../Utility/StringCheck.php";
+    require_once "../Utility/ValidationHelper.php";
+    require_once "../Utility/ResponseHelper.php";
+    require_once "../Config/HashPassword.php";
     require_once "../Config/DatabaseConfig.php";
-    require_once "../Utility/RoleCheck.php";
+    require_once "../Utility/SessionHelper.php";
 } catch (Throwable $e) {
     if (function_exists('log_error')) {
         log_error("Initialization failed: " . $e->getMessage());
     }
-    exit(json_encode(LoginResponse::createErrorResponse("Something went wrong on the server..")));
+    exit(json_encode(SignInResponse::createErrorResponse("Something went wrong on the server..")));
 }
 
-/**
- * Verifies user credentials and returns user data if valid
- */
-function verify_user_credentials(mysqli|bool $conn, string $username, string $password): array|false {
+function verify_user_credentials(mysqli|bool $conn, string $username, string $password) : ?array {
     try {
-        $sql_query = "CALL get_user_login_credentials(?)";
+        $sql_query = "CALL verify_user_credentials(?)";
 
         if(!$conn) {
             throw new Exception("Unable to connect to database");
@@ -79,7 +77,7 @@ function verify_user_credentials(mysqli|bool $conn, string $username, string $pa
             throw new Exception("Unable to prepare statement");
         }
 
-        if(!mysqli_stmt_bind_param($stmt, 's', $username)) {
+        if(!mysqli_stmt_bind_param($stmt, "s", $username)) {
             throw new Exception("Can't bind statement parameter");
         }
 
@@ -88,112 +86,89 @@ function verify_user_credentials(mysqli|bool $conn, string $username, string $pa
         }
 
         $result = mysqli_stmt_get_result($stmt);
+        $user_data = mysqli_fetch_assoc($result);
 
-        if($result === false) {
-            throw new Exception("Unable to get result object");
+        if(!$user_data) {
+            return null;
         }
 
-        $row_count = mysqli_num_rows($result);
-
-        if($row_count > 1) {
-            throw new Exception("ALERT, sql query returned more than one row for username: ". $username);
+        if(!password_verify($password, $user_data['password'])) {
+            return null;
         }
 
-        if($row_count == 0) {
-            return false;
-        }
+        return $user_data;
 
-        $user = mysqli_fetch_assoc($result);
+    } catch(mysqli_sql_exception $sql_e) {
+        log_error($sql_e->getMessage());
+        return null;
 
-        if(!$user) {
-            throw new Exception("Unable to fetch result data");
-        }
+    } catch (Exception $e) {
+        log_error($e->getMessage());
+        return null;
 
-        if(!isset($user['user_password'])) {
-            throw new Exception("Password field not returned in query result");
-        }
+    } catch(Error $err) {
+        log_error($err->getMessage());
+        return null;
 
-        if(!password_verify($password, $user['user_password'])) {
-            return false;
-        }
-
-        return $user;
-        
     } finally {
         if(isset($stmt)) {
             mysqli_stmt_close($stmt);
         }
+
+        if(isset($conn)) {
+            mysqli_close($conn);
+        }
     }
-}
-
-/**
- * Creates a new session for the authenticated user
- */
-function create_user_session(array $user_data): string {
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        session_regenerate_id(true);
-    } else {
-        session_start([
-            'use_only_cookies' => 0, // Since we're not using cookies
-            'use_strict_mode' => true,
-            'cookie_httponly' => true,
-            'cookie_secure' => true,
-            'cookie_samesite' => 'Strict'
-        ]);
-        session_regenerate_id(true);
-    }
-
-    $_SESSION['user_id'] = $user_data['user_id'];
-    $_SESSION['username'] = $user_data['username'];
-    $_SESSION['role'] = $user_data['role'];
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
-    return session_id();
 }
 
 function Main($db_credentials) {
-    try {
-        if (has_session()) {
-            $response = LoginResponse::createErrorResponse("User already logged in");
-            send_api_response($response);
-            return;
-        }
+    verifyPostMethod();
 
+    try {
         $requiredFields = ['username', 'password'];
         $requestData = fetch_json_data($requiredFields);
 
-        $validation = new ValidationError();
+        $validation = new SignInValidationError();
 
-        if ($error = ValidationHelper::validateUsername($requestData['username'])) {
-            $validation->setUsernameError($error);
+        if (empty($requestData['username'])) {
+            $validation->setUsernameError("Username is required");
         }
 
-        if ($error = ValidationHelper::validatePassword($requestData['password'])) {
-            $validation->setPasswordError($error);
+        if (empty($requestData['password'])) {
+            $validation->setPasswordError("Password is required");
         }
 
-        if ($validation->hasErrors()) {
-            $response = new LoginResponse(false, null, null, null, $validation);
+        if($validation->hasErrors()) {
+            $response = new SignInResponse(false, null, null, null, $validation);
             send_api_response($response);
             return;
         }
 
-        // Connect to database and verify credentials
         $conn = mysqli_connect(...$db_credentials);
-        $user_data = verify_user_credentials($conn, $requestData['username'], $requestData['password']);
-
-        if (!$user_data) {
-            $response = new LoginResponse(false, null, null, "Incorrect username or password", null);
+        if (!$conn) {
+            $response = SignInResponse::createErrorResponse("Something went wrong on the server..");
             send_api_response($response);
             return;
         }
 
-        // Create session and return success response
-        $session_id = create_user_session($user_data);
+        $user_data = verify_user_credentials($conn, $requestData['username'], $requestData['password']);
         
-        $response = new LoginResponse(
+        if(!$user_data) {
+            $response = SignInResponse::createErrorResponse("Invalid username or password");
+            send_api_response($response);
+            return;
+        }
+
+        check_login_status();
+        session_regenerate_id(true);
+        
+        $_SESSION['username'] = $user_data['username'];
+        $_SESSION['role'] = $user_data['role'];
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        
+        $response = new SignInResponse(
             true,
-            $session_id,
+            session_id(),
             $user_data['role'],
             null,
             null
@@ -203,16 +178,9 @@ function Main($db_credentials) {
 
     } catch (Exception $e) {
         log_error("Application error: " . $e->getMessage());
-        $response = LoginResponse::createErrorResponse("Something went wrong on the server...");
+        $response = SignInResponse::createErrorResponse("Something went wrong on the server..");
         send_api_response($response);
-    } catch (Error $err) {
-        log_error("Application error: " . $err->getMessage());
-        $response = LoginResponse::createErrorResponse("Something went wrong on the server...");
-        send_api_response($response);
-    } finally {
-        if(isset($conn)) {
-            mysqli_close($conn);
-        }
+        return;
     }
 }
 
