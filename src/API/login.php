@@ -122,7 +122,9 @@ function verify_user_credentials(mysqli|bool $conn, string $username, string $pa
 }
 
 function Main($db_credentials) {
-    verifyPostMethod();
+    if(!verifyPostMethod()) {
+        send_api_response(SignInResponse::createErrorResponse("Something went wrong..."));
+    }
 
     try {
         $requiredFields = ['username', 'password'];
