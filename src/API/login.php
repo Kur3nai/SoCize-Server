@@ -65,7 +65,7 @@ try {
 
 function verify_user_credentials(mysqli|bool $conn, string $username, string $password) : ?array {
     try {
-        $sql_query = "CALL verify_user_credentials(?)";
+        $sql_query = "CALL get_user_credentials(?)";
 
         if(!$conn) {
             throw new Exception("Unable to connect to database");
@@ -99,8 +99,7 @@ function verify_user_credentials(mysqli|bool $conn, string $username, string $pa
         return $user_data;
 
     } catch(mysqli_sql_exception $sql_e) {
-        log_error($sql_e->getMessage());
-        return null;
+        throw $sql_e;
 
     } catch (Exception $e) {
         log_error($e->getMessage());
@@ -161,13 +160,17 @@ function Main($db_credentials) {
             return;
         }
 
-        check_login_status();
+        if(session_status() === PHP_SESSION_NONE) {
+            session_start();
+        } else {
+            send_api_response(SignInResponse::createErrorResponse("Already logged in."));
+        }
+
         session_regenerate_id(true);
         
         $_SESSION['username'] = $user_data['username'];
         $_SESSION['role'] = $user_data['role'];
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        
+                
         $response = new SignInResponse(
             true,
             session_id(),
