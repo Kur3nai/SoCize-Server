@@ -131,7 +131,9 @@ function add_user_to_db(mysqli|bool $conn, string $username, string $password, s
 }
 
 function Main($db_credentials) {
-    verifyPostMethod();
+    if(!verifyPostMethod()) {
+        send_api_response(SignUpResponse::createErrorResponse("Something went wrong..."));
+    }
 
     try {
         $requiredFields = ['username', 'password', 'email', 'phoneNumber'];
