@@ -43,9 +43,9 @@ function delete_user_file(mysqli $conn, string $username, string $filename): boo
         if ($row = mysqli_fetch_assoc($result)) {
             $filePath = __DIR__ . '/../' . $row['file_directory'] . $row['filename'];
             
-            if (file_exists($filePath) {
+            if (file_exists($filePath)) {
                 unlink($filePath);
-            })
+            }
         }
         mysqli_stmt_close($stmt);
 
