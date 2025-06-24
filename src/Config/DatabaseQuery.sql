@@ -81,6 +81,7 @@ DELIMITER ;
 
 --DOWN HERE
 
+--
 DELIMITER $$
 CREATE PROCEDURE get_all_users()
 BEGIN
@@ -88,6 +89,8 @@ BEGIN
     ORDER BY username ASC;
 END $$
 DELIMITER ;
+
+
 
 DELIMITER $$
 CREATE PROCEDURE get_file_path(IN username_ VARCHAR(100), IN filename_ VARCHAR(50))
@@ -97,6 +100,9 @@ BEGIN
 END $$
 DELIMITER ;
 
+
+
+--You can use select all from user and return me the field in which the username provided matched the one in sql.
 
 DELIMITER $$
 CREATE PROCEDURE get_account_details(IN username_ VARCHAR(100))
