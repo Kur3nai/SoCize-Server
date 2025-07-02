@@ -24,6 +24,9 @@ try {
     require_once "../Utility/SessionHelper.php";
     require_once "../Config/DatabaseConfig.php";
 } catch (Throwable $e) {
+    if (function_exists('log_error')) {
+        log_error("Initialization failed: " . $e->getMessage());
+    }
     exit(json_encode(AccountDetailsResponse::createErrorResponse("Something went wrong.....")));
 }
 
@@ -56,20 +59,24 @@ function get_account_details(mysqli $conn, string $username): ?array {
     }
 }
 
-function verify_admin_session(string $sessionId): ?array {
-    if (!check_login_status()) {
-        return null;
-    }
+//uncomment once everything has been fixed, need to move this into responsehelper
+// function verify_admin_session(string $sessionId): ?array {
+//     session_id($sessionId);
+//     session_start();
 
-    if ($_SESSION['role'] !== 'admin') {
-        return null;
-    }
+//     if (!check_login_status()) {
+//         return null;
+//     }
 
-    return [
-        'username' => $_SESSION['username'],
-        'role' => $_SESSION['role']
-    ];
-}
+//     if ($_SESSION['role'] !== 'admin') {
+//         return null;
+//     }
+
+//     return [
+//         'username' => $_SESSION['username'],
+//         'role' => $_SESSION['role']
+//     ];
+// }
 
 function Main($db_credentials) {
     try {
@@ -78,12 +85,8 @@ function Main($db_credentials) {
             return;
         }
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        
-        if (!isset($input['sessionId']) || !isset($input['accountUsername'])) {
-            send_api_response(new AccountDetailsResponse(false, "Something went wrong....."));
-            return;
-        }
+        $requiredFields = ['sessionId', 'accountUsername'];
+        $input = fetch_json_data($requiredFields);
 
         $session = verify_admin_session($input['sessionId']);
         if (!$session) {
