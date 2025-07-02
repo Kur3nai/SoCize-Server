@@ -22,50 +22,16 @@ try {
     require_once "../Utility/SessionHelper.php";
     require_once "../Config/DatabaseConfig.php";
 } catch (Throwable $e) {
+    if (function_exists('log_error')) {
+        log_error("Initialization failed: " . $e->getMessage());
+    }
     exit(json_encode(FileDeleteResponse::createErrorResponse("Something went wrong.....")));
 }
 
-/**
- * this function will find both the physical location and filepath and delete based on what is returned from the sql
- * 
- */
-function delete_user_file(mysqli $conn, string $username, string $filename): bool {
-    try {
-        $stmt = mysqli_prepare($conn, "CALL get_file_path(?)");
-        if (!$stmt) {
-            throw new Exception("Something went wrong...");
-        }
-
-        mysqli_stmt_bind_param($stmt, "s", $filename);
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-        
-        if ($row = mysqli_fetch_assoc($result)) {
-            $filePath = __DIR__ . '/../' . $row['file_directory'] . $row['filename'];
-            
-            if (file_exists($filePath)) {
-                unlink($filePath);
-            }
-        }
-        mysqli_stmt_close($stmt);
-
-        $stmt = mysqli_prepare($conn, "CALL delete_file_record(?, ?)");
-        if (!$stmt) {
-            throw new Exception("Failed to prepare statement");
-        }
-
-        mysqli_stmt_bind_param($stmt, "ss", $username, $filename);
-        $success = mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-        
-        return $success;
-    } catch (mysqli_sql_exception $e) {
-        log_error("Database error: " . $e->getMessage());
-        return false;
-    }
-}
-
 function verify_session(string $sessionId): ?array {
+    session_id($sessionId);
+    session_start();
+
     if (!check_login_status()) {
         return null;
     }
@@ -77,56 +43,58 @@ function verify_session(string $sessionId): ?array {
 }
 
 function Main($db_credentials) {
+    $conn = null;
+    $stmt = null;
+    $result = null;
+    
     try {
         if (!verifyPostMethod()) {
-            send_api_response(new FileDeleteResponse(false, "Something went wrong...."));
+            send_api_response(new FileDeleteResponse(false, "Invalid request method"));
             return;
         }
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        if (!isset($input['sessionId']) || !isset($input['filename'])) {
-            send_api_response(new FileDeleteResponse(false, "Something went wrong...."));
-            return;
-        }
+        $requiredFields = ['sessionId', 'filename'];
+        $input = fetch_json_data($requiredFields);
 
         $session = verify_session($input['sessionId']);
         if (!$session || !isset($session['username'])) {
-            send_api_response(new FileDeleteResponse(false, "Something went wrong......."));
+            send_api_response(new FileDeleteResponse(false, "Invalid session"));
             return;
         }
 
         $conn = mysqli_connect(...$db_credentials);
         if (!$conn) {
-            send_api_response(new FileDeleteResponse(false, "Something went wrong with the server...."));
+            send_api_response(new FileDeleteResponse(false, "Database connection failed"));
             return;
         }
 
-        mysqli_query($conn, "SET @filepath = NULL");
-        
-        $stmt = mysqli_prepare($conn, "CALL get_verified_file_path(?, ?, @filepath)");
+        $stmt = mysqli_prepare($conn, "CALL get_verified_file_path(?, ?)");
+        if (!$stmt) {
+            throw new Exception("Failed to prepare statement");
+        }
+
         mysqli_stmt_bind_param($stmt, "ss", $session['username'], $input['filename']);
         mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-        
-        $result = mysqli_query($conn, "SELECT @filepath AS filepath");
+        $result = mysqli_stmt_get_result($stmt);
         $row = mysqli_fetch_assoc($result);
         
         if (empty($row['filepath'])) {
-            send_api_response(new FileDeleteResponse(false, "Something went wrong....."));
-            mysqli_close($conn);
+            send_api_response(new FileDeleteResponse(false, "File not found or access denied"));
             return;
         }
 
         $fullPath = __DIR__ . '/../' . $row['filepath'];
         
-        $stmt = mysqli_prepare($conn, "CALL delete_file_record(?, ?)");
-        mysqli_stmt_bind_param($stmt, "ss", $session['username'], $input['filename']);
-        $deleteSuccess = mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
+        $deleteStmt = mysqli_prepare($conn, "CALL delete_file_record(?, ?)");
+        if (!$deleteStmt) {
+            throw new Exception("Failed to prepare delete statement");
+        }
+
+        mysqli_stmt_bind_param($deleteStmt, "ss", $session['username'], $input['filename']);
+        $deleteSuccess = mysqli_stmt_execute($deleteStmt);
         
         if (!$deleteSuccess) {
-            send_api_response(new FileDeleteResponse(false, "Something went wrong with the server...."));
-            mysqli_close($conn);
+            send_api_response(new FileDeleteResponse(false, "Failed to delete file record"));
             return;
         }
 
@@ -136,15 +104,24 @@ function Main($db_credentials) {
             }
         }
 
-        mysqli_close($conn);
         send_api_response(new FileDeleteResponse(true, null));
 
     } catch (Exception $e) {
+        log_error("Application error: " . $e->getMessage());
+        send_api_response(new FileDeleteResponse(false, "An error occurred"));
+    } finally {
+        if (isset($result)) {
+            mysqli_free_result($result);
+        }
+        if (isset($stmt)) {
+            mysqli_stmt_close($stmt);
+        }
+        if (isset($deleteStmt)) {
+            mysqli_stmt_close($deleteStmt);
+        }
         if (isset($conn)) {
             mysqli_close($conn);
         }
-        log_error("Application error: " . $e->getMessage());
-        send_api_response(new FileDeleteResponse(false, "Something went wrong..."));
     }
 }
 
