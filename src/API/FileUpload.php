@@ -22,12 +22,29 @@ try {
     require_once "../Utility/SessionHelper.php";
     require_once "../Config/DatabaseConfig.php";
 } catch (Throwable $e) {
+    if (function_exists('log_error')) {
+        log_error("Initialization failed: " . $e->getMessage());
+    }
     exit(json_encode(FileUploadResponse::createErrorResponse("Initialization failed")));
 }
 
+function verify_session(string $sessionId): ?array {
+    session_id($sessionId);
+    session_start();
+
+    if (!check_login_status()) {
+        return null;
+    }
+
+    return [
+        'username' => $_SESSION['username'],
+        'csrf_token' => $_SESSION['csrf_token']
+    ];
+}
+
 function validate_file_upload(array $fileData, string $newFileName): ?string {
-    if (!isset($fileData['error']) || $fileData['error'] === UPLOAD_ERR_NO_FILE) {
-        return "No file was uploaded";
+    if (!isset($fileData['error']) {
+        return "Invalid file upload";
     }
 
     switch ($fileData['error']) {
@@ -36,6 +53,8 @@ function validate_file_upload(array $fileData, string $newFileName): ?string {
             return "File too large (maximum 5MB allowed)";
         case UPLOAD_ERR_PARTIAL:
             return "File was only partially uploaded";
+        case UPLOAD_ERR_NO_FILE:
+            return "No file was uploaded";
         case UPLOAD_ERR_NO_TMP_DIR:
             return "Missing temporary folder";
         case UPLOAD_ERR_CANT_WRITE:
@@ -43,7 +62,7 @@ function validate_file_upload(array $fileData, string $newFileName): ?string {
         case UPLOAD_ERR_EXTENSION:
             return "File upload stopped by extension";
         case UPLOAD_ERR_OK:
-            break; 
+            break;
         default:
             return "Unknown upload error";
     }
@@ -67,25 +86,11 @@ function validate_file_upload(array $fileData, string $newFileName): ?string {
         return "Filename contains invalid characters";
     }
 
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mime = finfo_file($finfo, $fileData['tmp_name']);
-    finfo_close($finfo);
-    
-    $allowedMimes = [
-        'text/plain',
-        'application/pdf',
-        'image/jpeg',
-        'image/png',
-    ];
-    
-    if (!in_array($mime, $allowedMimes)) {
-        return "File type not allowed";
-    }
-
     return null;
 }
 
 function save_file_record(mysqli $conn, string $filename, string $username, string $directory): bool {
+    $stmt = null;
     try {
         $stmt = mysqli_prepare($conn, "CALL add_file_record(?, ?, ?)");
         if (!$stmt) {
@@ -93,46 +98,42 @@ function save_file_record(mysqli $conn, string $filename, string $username, stri
         }
 
         mysqli_stmt_bind_param($stmt, "sss", $filename, $username, $directory);
-        $success = mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-        
-        return $success;
-    } catch (mysqli_sql_exception $e) {
-        log_error("Database error: " . $e->getMessage());
-        return false;
+        return mysqli_stmt_execute($stmt);
+    } finally {
+        if ($stmt) {
+            mysqli_stmt_close($stmt);
+        }
     }
 }
 
-function save_uploaded_file(mysqli $conn, string $newFileName, array $fileData, string $username): bool {
-    $uploadDir = __DIR__ . '/../uploads/';
-    $relativeDir = 'uploads/';
+function save_uploaded_file(mysqli $conn, string $userFilename, array $fileData, string $username): bool {
+    $baseUploadDir = __DIR__ . '/../uploads/';
     
-    if (!file_exists($uploadDir)) {
-        if (!mkdir($uploadDir, 0755, true)) {
+    $userDir = $baseUploadDir . $username . '/';
+    
+    $relativeDir = 'uploads/' . $username . '/';
+    
+    if (!file_exists($userDir)) {
+        if (!mkdir($userDir, 0755, true)) {
+            log_error("Failed to create directory for user: " . $username);
             return false;
         }
     }
 
-    $i = 0;
-    $parts = pathinfo($newFileName);
-    $fileName = $newFileName;
-    
-    while (file_exists($uploadDir . $fileName)) {
-        $i++;
-        $fileName = $parts['filename'] . "_" . $i;
-        if (isset($parts['extension'])) {
-            $fileName .= "." . $parts['extension'];
-        }
-    }
+    $fileExt = pathinfo($userFilename, PATHINFO_EXTENSION);
+    $uniqueFilename = uniqid() . ($fileExt ? '.' . $fileExt : '');
+    $filePath = $userDir . $uniqueFilename;
 
-    if (!move_uploaded_file($fileData['tmp_name'], $uploadDir . $fileName)) {
+    if (!move_uploaded_file($fileData['tmp_name'], $filePath)) {
+        log_error("Failed to move uploaded file for user: " . $username);
         return false;
     }
 
-    return save_file_record($conn, $fileName, $username, $relativeDir);
+    return save_file_record($conn, $userFilename, $username, $relativeDir . $uniqueFilename);
 }
 
 function Main($db_credentials) {
+    $conn = null;
     try {
         if (!verifyPostMethod()) {
             send_api_response(FileUploadResponse::createErrorResponse("Only POST requests allowed"));
@@ -161,25 +162,25 @@ function Main($db_credentials) {
 
         $conn = mysqli_connect(...$db_credentials);
         if (!$conn) {
-            send_api_response(FileUploadResponse::createErrorResponse("Database connection failed"));
+            log_error("Database connection failed for user: " . $session['username']);
+            send_api_response(FileUploadResponse::createErrorResponse("Something went wrong on the server..."));
             return;
         }
 
         if (!save_uploaded_file($conn, $newFileName, $fileData, $session['username'])) {
             send_api_response(FileUploadResponse::createErrorResponse("Failed to save file"));
-            mysqli_close($conn);
             return;
         }
 
-        mysqli_close($conn);
         send_api_response(new FileUploadResponse(true, null));
 
     } catch (Exception $e) {
-        if (isset($conn)) {
+        log_error("Application error: " . $e->getMessage());
+        send_api_response(FileUploadResponse::createErrorResponse("Something went wrong on the server..."));
+    } finally {
+        if ($conn) {
             mysqli_close($conn);
         }
-        log_error("Application error: " . $e->getMessage());
-        send_api_response(FileUploadResponse::createErrorResponse("Internal server error"));
     }
 }
 
