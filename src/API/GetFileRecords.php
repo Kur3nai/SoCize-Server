@@ -8,7 +8,7 @@ class FileDownloadResponse {
     public function __construct(bool $success, ?string $errorMessage, ?array $files = null) {
         $this->success = $success;
         $this->errorMessage = $errorMessage;
-        $this->files = $success ? ($files ?? []) : null; // Enforce empty array for success, null for failure
+        $this->files = $success ? ($files ?? []) : null; 
     }
 
     public static function createErrorResponse(string $errorMessage) {
@@ -28,7 +28,10 @@ class FileInfo {
     }
 
     public function toDownloadFormat(): array {
-        return ['filename' => $this->filename];
+        return [
+            'filename' => $this->filename,
+            'upload_time' => $this->upload_time
+        ];
     }
 }
 
@@ -40,10 +43,15 @@ try {
     require_once "../Utility/SessionHelper.php";
     require_once "../Config/DatabaseConfig.php";
 } catch (Throwable $e) {
+    if (function_exists('log_error')) {
+        log_error("Initialization failed: " . $e->getMessage());
+    }
     exit(json_encode(FileDownloadResponse::createErrorResponse("Initialization failed")));
 }
 
 function get_user_files(mysqli $conn, string $username): array {
+    $stmt = null;
+    $result = null;
     try {
         $stmt = mysqli_prepare($conn, "CALL get_user_files(?)");
         if (!$stmt) {
@@ -60,15 +68,21 @@ function get_user_files(mysqli $conn, string $username): array {
             $files[] = new FileInfo($row);
         }
         
-        mysqli_stmt_close($stmt);
         return $files;
-    } catch (mysqli_sql_exception $e) {
-        log_error("Database error: " . $e->getMessage());
-        throw $e; // Re-throw to be caught in Main()
+    } finally {
+        if ($result) {
+            mysqli_free_result($result);
+        }
+        if ($stmt) {
+            mysqli_stmt_close($stmt);
+        }
     }
 }
 
 function verify_session(string $sessionId): ?array {
+    session_id($sessionId);
+    session_start();
+
     if (!check_login_status()) {
         return null;
     }
@@ -79,26 +93,18 @@ function verify_session(string $sessionId): ?array {
     ];
 }
 
-function verifyPostMethod(): bool {
-    return $_SERVER['REQUEST_METHOD'] === 'POST';
-}
-
 function Main($db_credentials) {
+    $conn = null;
     try {
         if (!verifyPostMethod()) {
             send_api_response(new FileDownloadResponse(false, "Only POST requests allowed"));
             return;
         }
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        
-        if (!isset($input['sessionId'])) {
-            send_api_response(new FileDownloadResponse(false, "Missing sessionId"));
-            return;
-        }
+        $requiredFields = ['sessionId'];
+        $input = fetch_json_data($requiredFields);
 
-        $sessionId = $input['sessionId'];
-        $session = verify_session($sessionId);
+        $session = verify_session($input['sessionId']);
         if (!$session || !isset($session['username'])) {
             send_api_response(new FileDownloadResponse(false, "Session has expired, please login or relogin to continue using the service."));
             return;
@@ -110,21 +116,17 @@ function Main($db_credentials) {
             return;
         }
 
-        try {
-            $fileObjects = get_user_files($conn, $session['username']);
-            $formattedFiles = array_map(fn($file) => $file->toDownloadFormat(), $fileObjects);
-            send_api_response(new FileDownloadResponse(true, null, $formattedFiles));
-        } catch (Exception $e) {
-            send_api_response(new FileDownloadResponse(false, "Failed to retrieve files"));
-        }
+        $fileObjects = get_user_files($conn, $session['username']);
+        $formattedFiles = array_map(fn($file) => $file->toDownloadFormat(), $fileObjects);
+        send_api_response(new FileDownloadResponse(true, null, $formattedFiles));
 
-        mysqli_close($conn);
     } catch (Exception $e) {
-        if (isset($conn)) {
-            mysqli_close($conn);
-        }
         log_error("Application error: " . $e->getMessage());
         send_api_response(new FileDownloadResponse(false, "Internal server error"));
+    } finally {
+        if ($conn) {
+            mysqli_close($conn);
+        }
     }
 }
 
