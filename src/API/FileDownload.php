@@ -22,105 +22,122 @@ try {
     require_once "../Utility/SessionHelper.php";
     require_once "../Config/DatabaseConfig.php";
 } catch (Throwable $e) {
+    if (function_exists('log_error')) {
+        log_error("Initialization failed: " . $e->getMessage());
+    }
     exit(json_encode(FileDownloadResponse::createErrorResponse("Initialization failed")));
 }
 
 /**
- * @param This function will verify whether the user is the owner of the file and return true or false
+ * Verifies user session and returns session data if valid
  */
-function get_file_path_with_ownership(mysqli $conn, string $username, string $filename): ?string {
+function verify_session(string $sessionId): ?array {
+    session_id($sessionId);
+    session_start();
+
+    if (!check_login_status()) {
+        return null;
+    }
+
+    return [
+        'username' => $_SESSION['username'],
+        'role' => $_SESSION['role'] ?? null,
+        'csrf_token' => $_SESSION['csrf_token'] ?? null
+    ];
+}
+
+/**
+ * Gets the actual file path from database after verifying ownership
+ */
+function get_file_path_with_ownership(mysqli $conn, string $username, string $userFilename): ?string {
+    $stmt = null;
     try {
         $stmt = mysqli_prepare($conn, "CALL get_file_path(?, ?)");
         if (!$stmt) {
             throw new Exception("Failed to prepare statement");
         }
 
-        mysqli_stmt_bind_param($stmt, "ss", $username, $filename);
+        mysqli_stmt_bind_param($stmt, "ss", $username, $userFilename);
         mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
         
         if ($row = mysqli_fetch_assoc($result)) {
-            $path = $row['file_directory'] . $row['filename'];
-            mysqli_stmt_close($stmt);
-            return $path;
+            return $row['file_directory']; 
         }
         
-        mysqli_stmt_close($stmt);
         return null;
     } catch (mysqli_sql_exception $e) {
         log_error("Database error: " . $e->getMessage());
         return null;
+    } finally {
+        if ($stmt) {
+            mysqli_stmt_close($stmt);
+        }
     }
 }
 
-function send_file_to_client(string $filePath) {
+/**
+ * Sends file to client with required headers
+ */
+function send_file_to_client(string $filePath, string $userFilename) {
     if (!file_exists($filePath)) {
         send_api_response(FileDownloadResponse::createErrorResponse("File not found on server"));
         return false;
     }
 
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mimeType = finfo_file($finfo, $filePath);
-    finfo_close($finfo);
-
-    header("Content-Type: " . $mimeType);
+    header("Content-Type: application/octet-stream");
     header("Content-Length: " . filesize($filePath));
-    header("Content-Disposition: attachment; filename=\"" . basename($filePath) . "\"");
+    header("Content-Disposition: attachment; filename=\"" . basename($userFilename) . "\"");
     
     readfile($filePath);
     return true;
 }
 
 function Main($db_credentials) {
+    $conn = null;
     try {
         if (!verifyPostMethod()) {
-            send_api_response(FileDownloadResponse::createErrorResponse("Something went wrong...."));
+            send_api_response(FileDownloadResponse::createErrorResponse("Invalid request method"));
             return;
         }
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        
-        if (!isset($input['sessionId']) || !isset($input['filename'])) {
-            send_api_response(FileDownloadResponse::createErrorResponse("Something went wrong...."));
-            return;
-        }
+        $requiredFields = ['sessionId', 'filename'];
+        $input = fetch_json_data($requiredFields);
 
-        $sessionId = $input['sessionId'];
-        $filename = $input['filename'];
-
-        $session = verify_session($sessionId);
+        $session = verify_session($input['sessionId']);
         if (!$session || !isset($session['username'])) {
-            send_api_response(FileDownloadResponse::createErrorResponse("User not logged in..."));
+            send_api_response(FileDownloadResponse::createErrorResponse("Invalid session"));
             return;
         }
 
         $conn = mysqli_connect(...$db_credentials);
         if (!$conn) {
-            send_api_response(FileDownloadResponse::createErrorResponse("Something went wrong with the server...."));
+            send_api_response(FileDownloadResponse::createErrorResponse("Database connection failed"));
             return;
         }
 
-        $filePath = get_file_path_with_ownership($conn, $session['username'], $filename);
-        if ($filePath === null) {
+        $fileInfo = get_file_path_with_ownership($conn, $session['username'], $input['filename']);
+        if ($fileInfo === null) {
             send_api_response(FileDownloadResponse::createErrorResponse("File not found or access denied"));
-            mysqli_close($conn);
             return;
         }
 
-        mysqli_close($conn);
+        $fullPath = __DIR__ . '/..' . $fileInfo['file_directory'];
+        $userFilename = $fileInfo['user_filename']; 
 
-        if (!send_file_to_client(__DIR__ . '/../' . $filePath)) {
+        if (!send_file_to_client($fullPath, $userFilename)) {
             return;
         }
 
         exit;
 
     } catch (Exception $e) {
-        if (isset($conn)) {
+        log_error("Application error: " . $e->getMessage());
+        send_api_response(FileDownloadResponse::createErrorResponse("An error occurred"));
+    } finally {
+        if ($conn) {
             mysqli_close($conn);
         }
-        log_error("Application error: " . $e->getMessage());
-        send_api_response(FileDownloadResponse::createErrorResponse("Something went wrong with the server...."));
     }
 }
 
