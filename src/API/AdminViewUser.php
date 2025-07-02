@@ -24,14 +24,19 @@ try {
     require_once "../Utility/SessionHelper.php";
     require_once "../Config/DatabaseConfig.php";
 } catch (Throwable $e) {
-    exit(json_encode(UserListResponse::createErrorResponse("Something went wrong....")));
+    if (function_exists('log_error')) {
+        log_error("Initialization failed: " . $e->getMessage());
+    }
+    exit(json_encode(UserListResponse::createErrorResponse("Initialization failed")));
 }
 
 function get_all_usernames(mysqli $conn): array {
+    $stmt = null;
+    $result = null;
     try {
         $stmt = mysqli_prepare($conn, "CALL get_all_usernames()");
         if (!$stmt) {
-            throw new Exception("Something went wrong....");
+            throw new Exception("Database operation failed");
         }
 
         mysqli_stmt_execute($stmt);
@@ -42,15 +47,21 @@ function get_all_usernames(mysqli $conn): array {
             $accounts[] = ['username' => $row['username']];
         }
         
-        mysqli_stmt_close($stmt);
         return $accounts;
-    } catch (mysqli_sql_exception $e) {
-        log_error("Database error: " . $e->getMessage());
-        throw $e;
+    } finally {
+        if ($result) {
+            mysqli_free_result($result);
+        }
+        if ($stmt) {
+            mysqli_stmt_close($stmt);
+        }
     }
 }
 
 function verify_admin_session(string $sessionId): ?array {
+    session_id($sessionId);
+    session_start();
+
     if (!check_login_status()) {
         return null;
     }
@@ -67,18 +78,15 @@ function verify_admin_session(string $sessionId): ?array {
 }
 
 function Main($db_credentials) {
+    $conn = null;
     try {
         if (!verifyPostMethod()) {
-            send_api_response(new UserListResponse(false, "Something went wrong....."));
+            send_api_response(new UserListResponse(false, "Only POST requests allowed"));
             return;
         }
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        
-        if (!isset($input['sessionId'])) {
-            send_api_response(new UserListResponse(false, "User is not logged in"));
-            return;
-        }
+        $requiredFields = ['sessionId'];
+        $input = fetch_json_data($requiredFields);
 
         $session = verify_admin_session($input['sessionId']);
         if (!$session) {
@@ -88,21 +96,20 @@ function Main($db_credentials) {
 
         $conn = mysqli_connect(...$db_credentials);
         if (!$conn) {
-            send_api_response(new UserListResponse(false, "Something went wrong with the server....."));
+            send_api_response(new UserListResponse(false, "Database connection failed"));
             return;
         }
 
         $accounts = get_all_usernames($conn);
-        mysqli_close($conn);
-        
         send_api_response(new UserListResponse(true, null, $accounts));
 
     } catch (Exception $e) {
-        if (isset($conn)) {
+        log_error("Application error: " . $e->getMessage());
+        send_api_response(new UserListResponse(false, "An error occurred"));
+    } finally {
+        if ($conn) {
             mysqli_close($conn);
         }
-        log_error("Application error: " . $e->getMessage());
-        send_api_response(new UserListResponse(false, "Something went wrong with the server...."));
     }
 }
 
