@@ -24,7 +24,78 @@ try {
     require_once "../Utility/SessionHelper.php";
     require_once "../Config/DatabaseConfig.php";
 } catch (Throwable $e) {
-    exit(json_encode(ServerHealthResponse::createErrorResponse("Something went wrong...")));
+    if (function_exists('log_error')) {
+        log_error("Initialization failed: " . $e->getMessage());
+    }
+    exit(json_encode(ServerHealthResponse::createErrorResponse("Initialization failed")));
+}
+
+function get_cpu_usage(): string {
+    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        exec('wmic cpu get loadpercentage', $output, $result);
+        if ($result !== 0 || !isset($output[1])) {
+            return 'N/A';
+        }
+        return trim($output[1]).'%';
+    } else {
+        $load = sys_getloadavg();
+        return $load === false ? 'N/A' : round($load[0], 2).'% (1min avg)';
+    }
+}
+
+function get_memory_usage(): string {
+    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        exec('wmic OS get FreePhysicalMemory,TotalVisibleMemorySize /Value', $output, $result);
+        if ($result !== 0) {
+            return 'N/A';
+        }
+        
+        $memory = [];
+        foreach ($output as $line) {
+            if (strpos($line, '=') !== false) {
+                [$key, $value] = explode('=', $line);
+                $memory[$key] = $value;
+            }
+        }
+        
+        $total = round(($memory['TotalVisibleMemorySize'] ?? 0) / 1024 / 1024, 2);
+        $free = round(($memory['FreePhysicalMemory'] ?? 0) / 1024 / 1024, 2);
+        $used = $total - $free;
+        $percent = $total > 0 ? round(($used / $total) * 100) : 0;
+        return "$used GB / $total GB ($percent% used)";
+    } else {
+        $free = shell_exec('free -m');
+        if ($free === null) {
+            return 'N/A';
+        }
+        
+        $free = trim($free);
+        $free_arr = explode("\n", $free);
+        if (count($free_arr) < 2) {
+            return 'N/A';
+        }
+        
+        $mem = explode(" ", $free_arr[1]);
+        $mem = array_filter($mem);
+        $mem = array_merge($mem);
+        
+        if (count($mem) < 3) {
+            return 'N/A';
+        }
+        
+        $used = round($mem[2] / 1024, 2);
+        $total = round($mem[1] / 1024, 2);
+        $percent = $total > 0 ? round(($used / $total) * 100) : 0;
+        return "$used GB / $total GB ($percent% used)";
+    }
+}
+
+function get_disk_space(): string {
+    $free = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' 
+        ? disk_free_space("C:") 
+        : disk_free_space("/");
+    
+    return $free === false ? 'N/A' : round($free / 1024 / 1024 / 1024).' GB';
 }
 
 function get_server_status(mysqli $conn): array {
@@ -37,54 +108,17 @@ function get_server_status(mysqli $conn): array {
         $status['databaseStatus'] = "OFFLINE";
     }
 
-    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-        exec('wmic cpu get loadpercentage', $output);
-        $cpuUsage = isset($output[1]) ? trim($output[1]).'%' : 'N/A';
-    } else {
-        $load = sys_getloadavg();
-        $cpuUsage = round($load[0], 2).'% (1min avg)';
-    }
-    $status['cpuUsage'] = $cpuUsage;
-
-    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-        exec('wmic OS get FreePhysicalMemory,TotalVisibleMemorySize /Value', $output);
-        $memory = [];
-        foreach ($output as $line) {
-            if (strpos($line, '=') !== false) {
-                [$key, $value] = explode('=', $line);
-                $memory[$key] = $value;
-            }
-        }
-        $total = round(($memory['TotalVisibleMemorySize'] ?? 0) / 1024 / 1024, 2);
-        $free = round(($memory['FreePhysicalMemory'] ?? 0) / 1024 / 1024, 2);
-        $used = $total - $free;
-        $percent = round(($used / $total) * 100);
-        $status['memoryUsage'] = "$used GB / $total GB ($percent% used)";
-    } else {
-        $free = shell_exec('free -m');
-        $free = (string)trim($free);
-        $free_arr = explode("\n", $free);
-        $mem = explode(" ", $free_arr[1]);
-        $mem = array_filter($mem);
-        $mem = array_merge($mem);
-        $used = round($mem[2] / 1024, 2);
-        $total = round($mem[1] / 1024, 2);
-        $percent = round(($used / $total) * 100);
-        $status['memoryUsage'] = "$used GB / $total GB ($percent% used)";
-    }
-
-    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-        $free = round(disk_free_space("C:") / 1024 / 1024 / 1024);
-        $status['diskSpaceAvailable'] = "$free GB";
-    } else {
-        $free = round(disk_free_space("/") / 1024 / 1024 / 1024);
-        $status['diskSpaceAvailable'] = "$free GB";
-    }
+    $status['cpuUsage'] = get_cpu_usage();
+    $status['memoryUsage'] = get_memory_usage();
+    $status['diskSpaceAvailable'] = get_disk_space();
 
     return $status;
 }
 
 function verify_admin_session(string $sessionId): ?array {
+    session_id($sessionId);
+    session_start();
+
     if (!check_login_status()) {
         return null;
     }
@@ -100,18 +134,15 @@ function verify_admin_session(string $sessionId): ?array {
 }
 
 function Main($db_credentials) {
+    $conn = null;
     try {
         if (!verifyPostMethod()) {
-            send_api_response(new ServerHealthResponse(false, "Something went wrong..."));
+            send_api_response(new ServerHealthResponse(false, "Only POST requests allowed"));
             return;
         }
 
-        $input = json_decode(file_get_contents('php://input'), true);
-        
-        if (!isset($input['sessionId'])) {
-            send_api_response(new ServerHealthResponse(false, "Something went wrong..."));
-            return;
-        }
+        $requiredFields = ['sessionId'];
+        $input = fetch_json_data($requiredFields);
 
         $session = verify_admin_session($input['sessionId']);
         if (!$session) {
@@ -121,21 +152,26 @@ function Main($db_credentials) {
 
         $conn = mysqli_connect(...$db_credentials);
         if (!$conn) {
-            send_api_response(new ServerHealthResponse(false, "Something went wrong with the server...."));
+            $status = [
+                'databaseStatus' => 'OFFLINE',
+                'cpuUsage' => get_cpu_usage(),
+                'memoryUsage' => get_memory_usage(),
+                'diskSpaceAvailable' => get_disk_space()
+            ];
+            send_api_response(new ServerHealthResponse(true, "Database is offline", $status));
             return;
         }
 
         $status = get_server_status($conn);
-        mysqli_close($conn);
-
         send_api_response(new ServerHealthResponse(true, null, $status));
 
     } catch (Exception $e) {
-        if (isset($conn)) {
+        log_error("Application error: " . $e->getMessage());
+        send_api_response(new ServerHealthResponse(false, "An error occurred"));
+    } finally {
+        if ($conn) {
             mysqli_close($conn);
         }
-        log_error("Application error: " . $e->getMessage());
-        send_api_response(new ServerHealthResponse(false, "Something went wrong..."));
     }
 }
 
