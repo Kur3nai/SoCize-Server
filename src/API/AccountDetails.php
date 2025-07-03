@@ -53,9 +53,15 @@ function get_account_details(mysqli $conn, string $username): ?array {
         
         mysqli_stmt_close($stmt);
         return null;
+
     } catch (mysqli_sql_exception $e) {
         log_error("Database error: " . $e->getMessage());
-        throw $e;
+        return false;
+
+    } finally {
+        if ($stmt) {
+            mysqli_stmt_close($stmt);
+        }
     }
 }
 
