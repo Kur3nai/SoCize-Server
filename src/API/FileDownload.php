@@ -25,7 +25,7 @@ try {
     if (function_exists('log_error')) {
         log_error("Initialization failed: " . $e->getMessage());
     }
-    exit(json_encode(FileDownloadResponse::createErrorResponse("Initialization failed")));
+    exit(json_encode(FileDownloadResponse::createErrorResponse("Something Went Wrong....")));
 }
 
 /**
@@ -35,14 +35,13 @@ function verify_session(string $sessionId): ?array {
     session_id($sessionId);
     session_start();
 
-    if (!check_login_status()) {
+    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'customer') {
         return null;
     }
 
     return [
         'username' => $_SESSION['username'],
-        'role' => $_SESSION['role'] ?? null,
-        'csrf_token' => $_SESSION['csrf_token'] ?? null
+        'role' => $_SESSION['role'], 
     ];
 }
 
@@ -106,13 +105,13 @@ function Main($db_credentials) {
 
         $session = verify_session($input['sessionId']);
         if (!$session || !isset($session['username'])) {
-            send_api_response(FileDownloadResponse::createErrorResponse("Invalid session"));
+            send_api_response(FileDownloadResponse::createErrorResponse("User is not logged in.."));
             return;
         }
 
         $conn = mysqli_connect(...$db_credentials);
         if (!$conn) {
-            send_api_response(FileDownloadResponse::createErrorResponse("Database connection failed"));
+            send_api_response(FileDownloadResponse::createErrorResponse("Something Went Wrong..."));
             return;
         }
 
@@ -133,7 +132,7 @@ function Main($db_credentials) {
 
     } catch (Exception $e) {
         log_error("Application error: " . $e->getMessage());
-        send_api_response(FileDownloadResponse::createErrorResponse("An error occurred"));
+        send_api_response(FileDownloadResponse::createErrorResponse("Something Went wrong.."));
     } finally {
         if ($conn) {
             mysqli_close($conn);
