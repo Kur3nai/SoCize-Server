@@ -32,13 +32,13 @@ function verify_session(string $sessionId): ?array {
     session_id($sessionId);
     session_start();
 
-    if (!check_login_status()) {
+    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'customer') {
         return null;
     }
 
     return [
         'username' => $_SESSION['username'],
-        'csrf_token' => $_SESSION['csrf_token']
+        'role' => $_SESSION['role'], 
     ];
 }
 
@@ -57,8 +57,8 @@ function Main($db_credentials) {
         $input = fetch_json_data($requiredFields);
 
         $session = verify_session($input['sessionId']);
-        if (!$session || !isset($session['username'])) {
-            send_api_response(new FileDeleteResponse(false, "Invalid session"));
+        if (!$session || $session['role'] !== 'customer') {
+            send_api_response(new FileDeleteResponse(false, "Invalid session or insufficient privileges"));
             return;
         }
 
