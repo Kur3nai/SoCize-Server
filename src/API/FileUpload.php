@@ -43,7 +43,7 @@ function verify_session(string $sessionId): ?array {
 }
 
 function validate_file_upload(array $fileData, string $newFileName): ?string {
-    if (!isset($fileData['error']) {
+    if (!isset($fileData['error'])) {
         return "Invalid file upload";
     }
 
