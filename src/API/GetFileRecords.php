@@ -83,13 +83,13 @@ function verify_session(string $sessionId): ?array {
     session_id($sessionId);
     session_start();
 
-    if (!check_login_status()) {
+    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'customer') {
         return null;
     }
 
     return [
         'username' => $_SESSION['username'],
-        'csrf_token' => $_SESSION['csrf_token']
+        'role' => $_SESSION['role'], 
     ];
 }
 
