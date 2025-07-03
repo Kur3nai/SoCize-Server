@@ -33,21 +33,34 @@ try {
 function get_all_usernames(mysqli $conn): array {
     $stmt = null;
     $result = null;
+    
     try {
         $stmt = mysqli_prepare($conn, "CALL get_all_usernames()");
         if (!$stmt) {
-            throw new Exception("Database operation failed");
+            throw new Exception("Failed to prepare database statement");
         }
 
-        mysqli_stmt_execute($stmt);
+        if (!mysqli_stmt_execute($stmt)) {
+            throw new Exception("Failed to execute database query");
+        }
+
         $result = mysqli_stmt_get_result($stmt);
+        if ($result === false) {
+            throw new Exception("Failed to get result set");
+        }
+
         $accounts = [];
-        
         while ($row = mysqli_fetch_assoc($result)) {
+            if ($row === null) {
+                throw new Exception("Error fetching row from result set");
+            }
             $accounts[] = ['username' => $row['username']];
         }
         
         return $accounts;
+    } catch (Exception $e) {
+        log_error("Database error in get_all_usernames: " . $e->getMessage());
+        throw new Exception("Failed to retrieve usernames");
     } finally {
         if ($result) {
             mysqli_free_result($result);
@@ -62,18 +75,13 @@ function verify_admin_session(string $sessionId): ?array {
     session_id($sessionId);
     session_start();
 
-    if (!check_login_status()) {
-        return null;
-    }
-
-    if ($_SESSION['role'] !== 'admin') {
+    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
         return null;
     }
 
     return [
         'username' => $_SESSION['username'],
-        'role' => $_SESSION['role'],
-        'csrf_token' => $_SESSION['csrf_token']
+        'role' => $_SESSION['role'], 
     ];
 }
 
