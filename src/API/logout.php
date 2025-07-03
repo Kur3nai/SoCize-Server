@@ -4,50 +4,45 @@ error_reporting(0);
 
 try {
     require_once "../Utility/ErrorLogging.php";
-
-} catch(Error) {
-    http_response_code(500);
-    exit;
-
-}
-
-try {
-    require_once "../Utility/RoleCheck.php";
-    require_once "../Utility/RequestResponseHelper.php";
-
+    require_once "../Utility/SessionHelper.php";
+    require_once "../Utility/ResponseHelper.php";
 } catch (Error $e) {
-    log_error($e->getMessage());
-
-    http_response_code(server_error);
-    exit;
+    if (function_exists('log_error')) {
+        log_error("Initialization failed: " . $e->getMessage());
+    }
 }
 
 /**
- * Procedure to clear the session data in the server and remove session cookie for the user.
+ * Completely destroys the specified session
  */
-function delete_session_data() : void {
-    session_unset();
+function delete_session(string $sessionId): void {
+    session_id($sessionId);
+    
+    session_start();
+    
+    $_SESSION = [];
+    
     session_destroy();
+    
     session_write_close();
 }
 
 /**
- * The main entry for this script, coordinates the process flow of this script to allow the user to log out.
- * 
- * Process flow :
- * 1. Check if the user is logged in to begin with
- * 2. Clear the session data and remove session cookie for the user.
- * 3. Redirect user back to the main menu page
+ * Main logout handler
  */
-function main() : void {
-    if(!check_login_status()) {
-        http_response_code(UNAUTHORIZED);
-        exit;
-    }
+function handle_logout(): void {
+    try {
+        $requiredKeys = ['sessionId']
+        fetch_json_data($requiredKeys)
 
-    delete_session_data();
-    exit; 
+        if (!isset($input['sessionId'])) {
+            exit; 
+        }
+        
+        delete_session($input['sessionId']);
+    } catch (Exception $e) {
+        log_error("Logout error: " . $e->getMessage());
+    }
 }
 
-main();
-?>
+handle_logout();
