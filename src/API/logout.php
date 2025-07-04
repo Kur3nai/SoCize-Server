@@ -33,7 +33,7 @@ function delete_session(string $sessionId): void {
 function handle_logout(): void {
     try {
         $requiredKeys = ['sessionId'];
-        fetch_json_data($requiredKeys);
+        $input = fetch_json_data($requiredKeys);
 
         if (!isset($input['sessionId'])) {
             exit; 
