@@ -37,26 +37,34 @@ function get_account_details(mysqli $conn, string $username): ?array {
             throw new Exception("Something went wrong with the server.....");
         }
 
-        mysqli_stmt_bind_param($stmt, "s", $username);
-        mysqli_stmt_execute($stmt);
+        if(!mysqli_stmt_bind_param($stmt, "s", $username)) {
+            throw new Exception("Failed to bind parameter for prepared statement");
+        }
+
+        if(!mysqli_stmt_execute($stmt)) {
+            throw new Exception("Failed to execute database query");
+        }
+
         $result = mysqli_stmt_get_result($stmt);
-        
+        if(!$result) {
+            throw new Exception("Failed to get result set");
+        }
+
         if ($row = mysqli_fetch_assoc($result)) {
             $details = [
                 'username' => $row['username'],
                 'email' => $row['email'],
                 'phoneNumber' => $row['phoneNumber']
             ];
-            mysqli_stmt_close($stmt);
+
             return $details;
         }
         
-        mysqli_stmt_close($stmt);
         return null;
 
     } catch (mysqli_sql_exception $e) {
         log_error("Database error: " . $e->getMessage());
-        return false;
+        throw $e;
 
     } finally {
         if ($stmt) {
@@ -107,7 +115,6 @@ function Main($db_credentials) {
         }
 
         $details = get_account_details($conn, $input['accountUsername']);
-        mysqli_close($conn);
 
         if ($details === null) {
             send_api_response(new AccountDetailsResponse(false, "User not found"));
@@ -117,11 +124,12 @@ function Main($db_credentials) {
         send_api_response(new AccountDetailsResponse(true, null, $details));
 
     } catch (Exception $e) {
+        log_error("Application error: " . $e->getMessage());
+        send_api_response(new AccountDetailsResponse(false, "Something went wrong...."));
+    } finally {
         if (isset($conn)) {
             mysqli_close($conn);
         }
-        log_error("Application error: " . $e->getMessage());
-        send_api_response(new AccountDetailsResponse(false, "Something went wrong...."));
     }
 }
 
