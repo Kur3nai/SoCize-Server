@@ -10,6 +10,7 @@ try {
     if (function_exists('log_error')) {
         log_error("Initialization failed: " . $e->getMessage());
     }
+    exit;
 }
 
 /**
