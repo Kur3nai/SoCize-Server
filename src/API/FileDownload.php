@@ -56,8 +56,14 @@ function get_file_path_with_ownership(mysqli $conn, string $username, string $us
             throw new Exception("Failed to prepare statement");
         }
 
-        mysqli_stmt_bind_param($stmt, "ss", $username, $userFilename);
-        mysqli_stmt_execute($stmt);
+        if(!mysqli_stmt_bind_param($stmt, "ss", $username, $userFilename)) {
+            throw new Exception("Failed to bind parameter for prepared statement.");
+        }
+
+        if(!mysqli_stmt_execute($stmt)) {
+            throw new Exception("Failed to execute database query");
+        }
+
         $result = mysqli_stmt_get_result($stmt);
         
         if ($row = mysqli_fetch_assoc($result)) {
@@ -67,7 +73,7 @@ function get_file_path_with_ownership(mysqli $conn, string $username, string $us
         return null;
     } catch (mysqli_sql_exception $e) {
         log_error("Database error: " . $e->getMessage());
-        return null;
+        throw $e;
     } finally {
         if ($stmt) {
             mysqli_stmt_close($stmt);
