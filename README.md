@@ -5,7 +5,7 @@
 SoCize is a secure file-handling module for social media-like environments, built to address growing concerns over data privacy. It allows users to **encrypt files locally** before uploading them to a server. The key idea is that **the server never has access to the unencrypted contents**—encryption and decryption happen entirely on the client side.
 
 This repository includes the **client-side application** for encryption, decryption, and interaction with a backend server.  
-> 🔗 The PHP-based backend is located here: [SoCize-Server GitHub Repo](https://github.com/Kur3nai/SoCize-Server)
+> 🔗 The Java-Based Frontend is located here: [SoCize-Client GitHub Repo](https://github.com/YT-07/SoCize-Client.git)
 
 ---
 
