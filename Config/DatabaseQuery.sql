@@ -27,8 +27,10 @@ CREATE TABLE file(
 
 INSERT INTO user_role (role_name)
 VALUES
-("user"),
+("customer"),
 ("admin");
+
+Select * from user;
 
 INSERT INTO user (username, role_id, user_password, phone_number, email)
 VALUES
@@ -40,7 +42,7 @@ VALUES
 DELIMITER $$
 CREATE PROCEDURE get_user_details(IN username_ VARCHAR(100))
 BEGIN
-    SELECT u.user_password, r.role_name 
+    SELECT u.username, u.user_password, r.role_name 
     FROM user u
     JOIN user_role r ON u.role_id = r.role_id
     WHERE u.username = username_;
@@ -115,6 +117,9 @@ BEGIN
     WHERE username = username_ AND filename = filename_;
 END $$get_user_details
 DELIMITER ;
+
+CALL get_user_details ("AdamZ");
+
 
 DELIMITER $$
 CREATE PROCEDURE get_account_details(IN username_ VARCHAR(100))
