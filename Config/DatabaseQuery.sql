@@ -30,8 +30,6 @@ VALUES
 ("user"),
 ("admin");
 
-Select * from user;
-
 INSERT INTO user (username, role_id, user_password, phone_number, email)
 VALUES
 ("AdamZ", 2, "$2a$10$eomAxPlTOl2RWJtPa3AxPOnRLJkKBAmCLzVd.7rZ.TGHtUnMdMwQ6", "123412341234", "Adam@gmail.com"),
