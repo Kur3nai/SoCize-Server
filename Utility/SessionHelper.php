@@ -12,10 +12,6 @@ function verify_admin_session(string $sessionId): ?array {
     session_id($sessionId);
     session_start();
 
-    if (!check_login_status()) {
-        return null;
-    }
-
     if ($_SESSION['role'] !== 'admin') {
         return null;
     }
