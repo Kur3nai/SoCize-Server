@@ -26,7 +26,7 @@ function verify_customer_session(string $sessionId): ?array {
     session_id($sessionId);
     session_start();
 
-    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'customer') {
+    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'user') {
         return null;
     }
 
