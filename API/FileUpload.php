@@ -28,20 +28,6 @@ try {
     exit(json_encode(FileUploadResponse::createErrorResponse("Initialization failed")));
 }
 
-function verify_session(string $sessionId): ?array {
-    session_id($sessionId);
-    session_start();
-
-    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'customer') {
-        return null;
-    }
-
-    return [
-        'username' => $_SESSION['username'],
-        'role' => $_SESSION['role'], 
-    ];
-}
-
 function validate_file_upload(array $fileData, string $newFileName): ?string {
     if (!isset($fileData['error'])) {
         return "Invalid file upload";
@@ -149,7 +135,7 @@ function Main($db_credentials) {
         $newFileName = $_POST['newFileName'];
         $fileData = $_FILES['file'];
 
-        $session = verify_session($sessionId);
+        $session = verify_customer_session($sessionId);
         if (!$session || !isset($session['username'])) {
             send_api_response(FileUploadResponse::createErrorResponse("Invalid or expired session"));
             return;

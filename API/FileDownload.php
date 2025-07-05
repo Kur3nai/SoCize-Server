@@ -29,23 +29,6 @@ try {
 }
 
 /**
- * Verifies user session and returns session data if valid
- */
-function verify_session(string $sessionId): ?array {
-    session_id($sessionId);
-    session_start();
-
-    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'customer') {
-        return null;
-    }
-
-    return [
-        'username' => $_SESSION['username'],
-        'role' => $_SESSION['role'], 
-    ];
-}
-
-/**
  * Gets the actual file path from database after verifying ownership
  */
 function get_file_path_with_ownership(mysqli $conn, string $username, string $userFilename): ?string {
@@ -109,7 +92,7 @@ function Main($db_credentials) {
         $requiredFields = ['sessionId', 'filename'];
         $input = fetch_json_data($requiredFields);
 
-        $session = verify_session($input['sessionId']);
+        $session = verify_customer_session($input['sessionId']);
         if (!$session || !isset($session['username'])) {
             send_api_response(FileDownloadResponse::createErrorResponse("User is not logged in.."));
             return;

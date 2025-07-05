@@ -73,25 +73,6 @@ function get_account_details(mysqli $conn, string $username): ?array {
     }
 }
 
-//uncomment once everything has been fixed, need to move this into responsehelper
-// function verify_admin_session(string $sessionId): ?array {
-//     session_id($sessionId);
-//     session_start();
-
-//     if (!check_login_status()) {
-//         return null;
-//     }
-
-//     if ($_SESSION['role'] !== 'admin') {
-//         return null;
-//     }
-
-//     return [
-//         'username' => $_SESSION['username'],
-//         'role' => $_SESSION['role']
-//     ];
-// }
-
 function Main($db_credentials) {
     try {
         if (!verifyPostMethod()) {
