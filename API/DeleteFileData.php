@@ -43,7 +43,7 @@ function Main($db_credentials) {
         $input = fetch_json_data($requiredFields);
 
         $session = verify_customer_session($input['sessionId']);
-        if (!$session || $session['role'] !== 'customer') {
+        if (!$session || $session['role'] !== 'user') {
             send_api_response(new FileDeleteResponse(false, "Invalid session or insufficient privileges"));
             return;
         }
