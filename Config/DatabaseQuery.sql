@@ -30,8 +30,6 @@ VALUES
 ("user"),
 ("admin");
 
-Select * from user;
-
 INSERT INTO user (username, role_id, user_password, phone_number, email)
 VALUES
 ("AdamZ", 2, "$2a$10$eomAxPlTOl2RWJtPa3AxPOnRLJkKBAmCLzVd.7rZ.TGHtUnMdMwQ6", "123412341234", "Adam@gmail.com"),
@@ -44,7 +42,8 @@ CREATE PROCEDURE get_user_details(IN username_ VARCHAR(100))
 BEGIN
     SELECT u.user_password, r.role_name 
     FROM user u
-    JOIN user_role r ON u.role_id = r.role_id;
+    JOIN user_role r ON u.role_id = r.role_id
+    WHERE u.username = username_;
 END$$
 DELIMITER ;
 
@@ -114,9 +113,8 @@ CREATE PROCEDURE get_file_path(IN username_ VARCHAR(100), IN filename_ VARCHAR(5
 BEGIN   
     SELECT file_directory FROM file
     WHERE username = username_ AND filename = filename_;
-END $$
+END $$get_user_details
 DELIMITER ;
-
 
 DELIMITER $$
 CREATE PROCEDURE get_account_details(IN username_ VARCHAR(100))

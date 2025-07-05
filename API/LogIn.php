@@ -169,12 +169,12 @@ function Main($db_credentials) {
         session_regenerate_id(true);
         
         $_SESSION['username'] = $user_data['username'];
-        $_SESSION['role'] = $user_data['role'];
+        $_SESSION['role'] = $user_data['role_name'];
                 
         $response = new SignInResponse(
             true,
             session_id(),
-            $user_data['role'],
+            $user_data['role_name'],
             null,
             null
         );
