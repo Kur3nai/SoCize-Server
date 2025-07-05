@@ -10,6 +10,6 @@ date_default_timezone_set('Asia/Kuala_Lumpur');
 
 function log_error(string $message): void {
     $logMessage = date('[Y-m-d H:i:s]') . " ERROR: " . $message . PHP_EOL;
-    file_put_contents(__DIR__ . '../logs/ErrorLogs.txt', $logMessage, FILE_APPEND);
+    file_put_contents(__DIR__ . '../Log/ErrorLogs.txt', $logMessage, FILE_APPEND);
 }
 ?>
