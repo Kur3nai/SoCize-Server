@@ -30,13 +30,13 @@ The **PHP server acts only as a file storage manager**, providing basic services
 
 ### 🚀 Features
 
-#### Client-Side (This Repo)
+#### Client-Side (Java Frontend)
 
 - **Encrypt File**: Locally encrypt files using AES or similar before uploading.
 - **Decrypt File**: Locally decrypt previously encrypted files using the correct key.
 - **Interact with Server**: Upload/download/delete files and authenticate users.
 
-#### Server-Side (PHP Backend)
+#### Server-Side (This Repo)
 
 - Store/retrieve encrypted files.
 - Track file ownership.
