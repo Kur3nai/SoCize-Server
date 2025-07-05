@@ -68,6 +68,7 @@ function Main($db_credentials) {
             send_api_response(new FileDeleteResponse(false, "File not found or access denied"));
             return;
         }
+        mysqli_stmt_close($stmt);
 
         $fullPath = __DIR__ . '/../' . $row['file_directory'];
         
@@ -94,6 +95,7 @@ function Main($db_credentials) {
 
     } catch (Exception $e) {
         log_error("Application error: " . $e->getMessage());
+        echo $e;
         send_api_response(new FileDeleteResponse(false, "An error occurred"));
     } finally {
         if (isset($result)) {
