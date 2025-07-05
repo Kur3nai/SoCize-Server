@@ -54,7 +54,7 @@ function get_account_details(mysqli $conn, string $username): ?array {
             $details = [
                 'username' => $row['username'],
                 'email' => $row['email'],
-                'phoneNumber' => $row['phoneNumber']
+                'phoneNumber' => $row['phone_number']
             ];
 
             return $details;
