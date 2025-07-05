@@ -25,6 +25,21 @@ CREATE TABLE file(
     FOREIGN KEY (username) REFERENCES user(username)
 );
 
+SELECT * FROM user_role;
+
+SELECT * FROM user;
+
+INSERT INTO user_role (role_id, role_name)
+VALUES
+("1", "customer"),
+("2", "admin")
+
+INSERT INTO user (username, role_id, user_password, phone_number, email)
+VALUES
+("AdamZ", "2", "$2a$10$eomAxPlTOl2RWJtPa3AxPOnRLJkKBAmCLzVd.7rZ.TGHtUnMdMwQ6", "123412341234", "Adam@gmail.com"),
+("Yen_Tze", "2", "$2a$10$e5fihghogas7oSKsZJU1quTdNjZskNHsBRpAhwKsAD5kF/5WNUZxq", "356354635463", "YT@gmail.com"),
+("Bombaclat", "2", "$2a$10$ysIejIqwkVfnTteA3kTEoeSVtqWkkMenc9D5g22L08l3m5embmFSu", "1723528453", "Bombablat@gmail.com")
+
 
 DELIMITER $$
 CREATE PROCEDURE get_user_credentials(IN username_ VARCHAR(100))
@@ -110,5 +125,3 @@ BEGIN
     WHERE username = username_;
 END $$
 DELIMITER ;
-
-
