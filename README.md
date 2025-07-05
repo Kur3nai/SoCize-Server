@@ -57,7 +57,6 @@ The **PHP server acts only as a file storage manager**, providing basic services
 - PHP 8.x
 - Apache/Nginx
 - MySQL/MariaDB
-- A browser (e.g., Chrome or Firefox)
 
 ### Steps to Run the Application
 
@@ -93,7 +92,7 @@ The screenshot below shows the contents of the PHP server backend:
 ## 👥 Contributors
 
 - **Lead PHP Developer**: [Adam Zikri] [Kur3nai] (https://github.com/Kur3nai)
-- **SQL Developer**: [Ammar Razeeq Fouad]
+- **SQL Developer**: [Ammar Razeeq Fouad] (https://github.com/Razeeku)
 - **Institution**: Asia Pacific University of Technology & Innovation (APU)
 
 ---
