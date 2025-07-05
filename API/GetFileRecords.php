@@ -79,20 +79,6 @@ function get_user_files(mysqli $conn, string $username): array {
     }
 }
 
-function verify_session(string $sessionId): ?array {
-    session_id($sessionId);
-    session_start();
-
-    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'customer') {
-        return null;
-    }
-
-    return [
-        'username' => $_SESSION['username'],
-        'role' => $_SESSION['role'], 
-    ];
-}
-
 function Main($db_credentials) {
     $conn = null;
     try {
@@ -104,7 +90,7 @@ function Main($db_credentials) {
         $requiredFields = ['sessionId'];
         $input = fetch_json_data($requiredFields);
 
-        $session = verify_session($input['sessionId']);
+        $session = verify_customer_session($input['sessionId']);
         if (!$session || !isset($session['username'])) {
             send_api_response(new FileDownloadResponse(false, "Session has expired, please login or relogin to continue using the service."));
             return;

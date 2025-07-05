@@ -71,20 +71,6 @@ function get_all_usernames(mysqli $conn): array {
     }
 }
 
-function verify_admin_session(string $sessionId): ?array {
-    session_id($sessionId);
-    session_start();
-
-    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-        return null;
-    }
-
-    return [
-        'username' => $_SESSION['username'],
-        'role' => $_SESSION['role'], 
-    ];
-}
-
 function Main($db_credentials) {
     $conn = null;
     try {

@@ -28,20 +28,6 @@ try {
     exit(json_encode(FileDeleteResponse::createErrorResponse("Something went wrong.....")));
 }
 
-function verify_session(string $sessionId): ?array {
-    session_id($sessionId);
-    session_start();
-
-    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'customer') {
-        return null;
-    }
-
-    return [
-        'username' => $_SESSION['username'],
-        'role' => $_SESSION['role'], 
-    ];
-}
-
 function Main($db_credentials) {
     $conn = null;
     $stmt = null;
@@ -56,7 +42,7 @@ function Main($db_credentials) {
         $requiredFields = ['sessionId', 'filename'];
         $input = fetch_json_data($requiredFields);
 
-        $session = verify_session($input['sessionId']);
+        $session = verify_customer_session($input['sessionId']);
         if (!$session || $session['role'] !== 'customer') {
             send_api_response(new FileDeleteResponse(false, "Invalid session or insufficient privileges"));
             return;
