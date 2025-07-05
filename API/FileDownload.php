@@ -110,8 +110,8 @@ function Main($db_credentials) {
             return;
         }
 
-        $fullPath = __DIR__ . '/..' . $fileInfo['file_directory'];
-        $userFilename = $fileInfo['user_filename']; 
+        $fullPath = __DIR__ . '/../' . $fileInfo;
+        $userFilename = $fileInfo; 
 
         if (!send_file_to_client($fullPath, $userFilename)) {
             return;
