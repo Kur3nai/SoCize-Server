@@ -25,7 +25,6 @@ CREATE TABLE file(
     FOREIGN KEY (username) REFERENCES user(username)
 );
 
---
 
 DELIMITER $$
 CREATE PROCEDURE get_user_credentials(IN username_ VARCHAR(100))
@@ -79,36 +78,36 @@ BEGIN
 END$$
 DELIMITER ;
 
---DOWN HERE
-
---
 DELIMITER $$
-CREATE PROCEDURE get_all_users()
+CREATE PROCEDURE get_all_usernames()
 BEGIN
-    SELECT username from USER
+    SELECT username FROM user
     ORDER BY username ASC;
 END $$
 DELIMITER ;
 
-
+DELIMITER $$
+CREATE PROCEDURE get_verified_file_path(IN username_ VARCHAR(100), IN filename_ VARCHAR(50))
+BEGIN   
+    SELECT file_directory FROM file
+    WHERE username = username_ AND filename = filename_;
+END $$
+DELIMITER ;
 
 DELIMITER $$
 CREATE PROCEDURE get_file_path(IN username_ VARCHAR(100), IN filename_ VARCHAR(50))
 BEGIN   
     SELECT file_directory FROM file
-    WHERE username = username_ AND filename = filename_
+    WHERE username = username_ AND filename = filename_;
 END $$
 DELIMITER ;
 
 
-
---You can use select all from user and return me the field in which the username provided matched the one in sql.
-
 DELIMITER $$
 CREATE PROCEDURE get_account_details(IN username_ VARCHAR(100))
 BEGIN
-    sELECT username,email,user_password,phone_number,role_id FROM user
-    WHERE username = username_
+    SELECT username, email, phone_number FROM user
+    WHERE username = username_;
 END $$
 DELIMITER ;
 
