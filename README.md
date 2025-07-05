@@ -91,8 +91,8 @@ The screenshot below shows the contents of the PHP server backend:
 
 ## 👥 Contributors
 
-- **Lead PHP Developer**: [Adam Zikri] [Kur3nai] (https://github.com/Kur3nai)
-- **SQL Developer**: [Ammar Razeeq Fouad] (https://github.com/Razeeku)
+- **Lead PHP Developer**: [Adam Zikri] [Kur3nai](https://github.com/Kur3nai)
+- **SQL Developer**: [Ammar Razeeq Fouad] [Razeeku](https://github.com/Razeeku)
 - **Institution**: Asia Pacific University of Technology & Innovation (APU)
 
 ---
