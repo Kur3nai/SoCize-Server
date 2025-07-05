@@ -30,6 +30,8 @@ VALUES
 ("customer"),
 ("admin");
 
+Select * from user;
+
 INSERT INTO user (username, role_id, user_password, phone_number, email)
 VALUES
 ("AdamZ", 2, "$2a$10$eomAxPlTOl2RWJtPa3AxPOnRLJkKBAmCLzVd.7rZ.TGHtUnMdMwQ6", "123412341234", "Adam@gmail.com"),
@@ -38,10 +40,11 @@ VALUES
 
 
 DELIMITER $$
-CREATE PROCEDURE get_user_credentials(IN username_ VARCHAR(100))
+CREATE PROCEDURE get_user_details(IN username_ VARCHAR(100))
 BEGIN
-    SELECT user_password FROM user 
-    WHERE username = username_;
+    SELECT u.user_password, r.role_name 
+    FROM user u
+    JOIN user_role r ON u.role_id = r.role_id;
 END$$
 DELIMITER ;
 
