@@ -27,7 +27,7 @@ CREATE TABLE file(
 
 INSERT INTO user_role (role_name)
 VALUES
-("customer"),
+("user"),
 ("admin");
 
 Select * from user;
