@@ -64,12 +64,12 @@ function Main($db_credentials) {
         $result = mysqli_stmt_get_result($stmt);
         $row = mysqli_fetch_assoc($result);
         
-        if (empty($row['filepath'])) {
+        if (empty($row['file_directory'])) {
             send_api_response(new FileDeleteResponse(false, "File not found or access denied"));
             return;
         }
 
-        $fullPath = __DIR__ . '/../' . $row['filepath'];
+        $fullPath = __DIR__ . '/../' . $row['file_directory'];
         
         $deleteStmt = mysqli_prepare($conn, "CALL delete_file_record(?, ?)");
         if (!$deleteStmt) {
