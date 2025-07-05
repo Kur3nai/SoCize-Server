@@ -47,7 +47,7 @@ class SignInResponse {
     }
 }
 
-error_reporting(0);
+// error_reporting(0);
 
 try {
     require_once "../Utility/ErrorLogging.php";
@@ -92,7 +92,7 @@ function verify_user_credentials(mysqli|bool $conn, string $username, string $pa
             return null;
         }
 
-        if(!password_verify($password, $user_data['password'])) {
+        if(!password_verify($password, $user_data['user_password'])) {
             return null;
         }
 
