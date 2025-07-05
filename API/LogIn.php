@@ -65,7 +65,7 @@ try {
 
 function verify_user_credentials(mysqli|bool $conn, string $username, string $password) : ?array {
     try {
-        $sql_query = "CALL get_user_credentials(?)";
+        $sql_query = "CALL get_user_details(?)";
 
         if(!$conn) {
             throw new Exception("Unable to connect to database");
