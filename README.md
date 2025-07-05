@@ -1,4 +1,4 @@
-# SoCize - File Encryption Backend
+# SoCize - File Storage Server
 
 **Final Year Project at [Asia Pacific University](https://apspace.apu.edu.my/)**
 
