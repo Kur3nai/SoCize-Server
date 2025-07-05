@@ -24,13 +24,11 @@ class FileInfo {
     public function __construct(array $fileData) {
         $this->filename = $fileData['filename'];
         $this->file_directory = $fileData['file_directory'];
-        $this->upload_time = $fileData['upload_time'];
     }
 
     public function toDownloadFormat(): array {
         return [
             'filename' => $this->filename,
-            'upload_time' => $this->upload_time
         ];
     }
 }
