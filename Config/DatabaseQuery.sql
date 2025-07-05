@@ -28,13 +28,13 @@ CREATE TABLE file(
 INSERT INTO user_role (role_name)
 VALUES
 ("customer"),
-("admin")
+("admin");
 
 INSERT INTO user (username, role_id, user_password, phone_number, email)
 VALUES
 ("AdamZ", 2, "$2a$10$eomAxPlTOl2RWJtPa3AxPOnRLJkKBAmCLzVd.7rZ.TGHtUnMdMwQ6", "123412341234", "Adam@gmail.com"),
 ("Yen_Tze", 2, "$2a$10$e5fihghogas7oSKsZJU1quTdNjZskNHsBRpAhwKsAD5kF/5WNUZxq", "356354635463", "YT@gmail.com"),
-("Bombaclat", 2, "$2a$10$ysIejIqwkVfnTteA3kTEoeSVtqWkkMenc9D5g22L08l3m5embmFSu", "1723528453", "Bombablat@gmail.com")
+("Bombaclat", 2, "$2a$10$ysIejIqwkVfnTteA3kTEoeSVtqWkkMenc9D5g22L08l3m5embmFSu", "1723528453", "Bombablat@gmail.com");
 
 
 DELIMITER $$
@@ -46,8 +46,7 @@ END$$
 DELIMITER ;
 
 DELIMITER $$
-CREATE PROCEDURE create_user_account(IN username_ VARCHAR(100),IN password_ VARCHAR(200),IN email_ VARCHAR(100),IN phone_ VARCHAR(15),IN roleid_ INT
-)
+CREATE PROCEDURE create_user_account(IN username_ VARCHAR(100),IN password_ VARCHAR(200),IN email_ VARCHAR(100),IN phone_ VARCHAR(15))
 BEGIN
     INSERT INTO user (username, user_password, email, phone_number, role_id)
     VALUES (username_, password_, email_, phone_, 1);
@@ -57,7 +56,8 @@ DELIMITER ;
 DELIMITER $$
 CREATE PROCEDURE delete_user_account(IN username_ VARCHAR(100))
 BEGIN   
-    DELETE FROM user WHERE username = username_;
+    DELETE FROM user 
+    WHERE username = username_ AND role_id != 2;
 END$$
 DELIMITER ;
 
@@ -93,6 +93,7 @@ DELIMITER $$
 CREATE PROCEDURE get_all_usernames()
 BEGIN
     SELECT username FROM user
+    WHERE role_id != 2
     ORDER BY username ASC;
 END $$
 DELIMITER ;
@@ -117,7 +118,8 @@ DELIMITER ;
 DELIMITER $$
 CREATE PROCEDURE get_account_details(IN username_ VARCHAR(100))
 BEGIN
-    SELECT username, email, phone_number FROM user
-    WHERE username = username_;
+    SELECT username, email, phone_number 
+    FROM user
+    WHERE username = username_ AND role_id != 2;
 END $$
 DELIMITER ;
