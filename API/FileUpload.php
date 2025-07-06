@@ -53,8 +53,8 @@ function validate_file_upload(array $fileData, string $newFileName): ?string {
             return "Unknown upload error";
     }
 
-    if ($fileData['size'] > 5 * 1024 * 1024) {
-        return "File too large (maximum 5MB allowed)";
+    if ($fileData['size'] > 50 * 1024 * 1024) {
+        return "File too large (maximum 50MB allowed)";
     }
     if ($fileData['size'] < 1024) {
         return "File too small (minimum 1KB required)";
