@@ -65,15 +65,18 @@ The **PHP server acts only as a file storage manager**, providing basic services
 git clone https://github.com/YT-07/SoCize-Client.git
 ```
 
+
 2. **Navigate to the project folder**
 ```console
 cd SoCize-Client
 ```
 
+
 3. **Open MySQL Workbench**
 Launch the application and connect to your MySQL server.
 
 Double-click your saved connection under "MySQL Connections" (or create one if needed).
+
 
 4. **Open the SQL File**
 Click File → Open SQL Script (or press Ctrl+O / Cmd+O).
@@ -81,6 +84,7 @@ Click File → Open SQL Script (or press Ctrl+O / Cmd+O).
 Navigate to SoCize-Server/Config/DatabaseQuery.sql
 
 The file will open in a new SQL tab.
+
 
 5. **Execute the SQL File**
 Click the lightning bolt icon ("Execute") or press Ctrl+Shift+Enter.
