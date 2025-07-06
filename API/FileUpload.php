@@ -36,7 +36,7 @@ function validate_file_upload(array $fileData, string $newFileName): ?string {
     switch ($fileData['error']) {
         case UPLOAD_ERR_INI_SIZE:
         case UPLOAD_ERR_FORM_SIZE:
-            return "File too large (maximum 5MB allowed)";
+            return "File too large (maximum 50MB allowed)";
         case UPLOAD_ERR_PARTIAL:
             return "File was only partially uploaded";
         case UPLOAD_ERR_NO_FILE:
