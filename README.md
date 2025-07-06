@@ -95,7 +95,7 @@ Alternatively, run specific queries by highlighting them and clicking Execute.
 6. . **Turn on MySQL on Xampp**
 Make sure that MySQL is on so that the local host database can be accessed.
 
-![alt](image_2025-07-06_204319062.png)
+![alt](XamppSample.png)
 
 
 7. **Continue on client side after Setup is done**
