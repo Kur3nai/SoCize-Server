@@ -2,6 +2,8 @@
 
 **Final Year Project at [Asia Pacific University](https://apspace.apu.edu.my/)**
 
+The server has to be setup before the client can be setup as there are stuff that the client needs that comes from the server.
+
 SoCize is a secure file-handling module for social media-like environments, built to address growing concerns over data privacy. It allows users to **encrypt files locally** before uploading them to a server. The key idea is that **the server never has access to the unencrypted contents**—encryption and decryption happen entirely on the client side.
 
 This repository includes the **client-side application** for encryption, decryption, and interaction with a backend server.  
@@ -62,34 +64,41 @@ The **PHP server acts only as a file storage manager**, providing basic services
 
 1. **Clone the repository**
 ```console
-git clone https://github.com/YT-07/SoCize-Client.git
+git clone https://github.com/Kur3nai/SoCize-Server.git
 ```
-
 
 2. **Navigate to the project folder**
 ```console
-cd SoCize-Client
+cd SoCize-Server
 ```
-
 
 3. **Open MySQL Workbench**
 Launch the application and connect to your MySQL server.
 
 Double-click your saved connection under "MySQL Connections" (or create one if needed).
 
-
 4. **Open the SQL File**
 Click File → Open SQL Script (or press Ctrl+O / Cmd+O).
 
-Navigate to SoCize-Server/Config/DatabaseQuery.sql
+Navigate to database query sql
+```Consolde
+SoCize-Server/Config/DatabaseQuery.sql
+```
 
 The file will open in a new SQL tab.
-
 
 5. **Execute the SQL File**
 Click the lightning bolt icon ("Execute") or press Ctrl+Shift+Enter.
 
 Alternatively, run specific queries by highlighting them and clicking Execute.
+
+6. . **Turn on MySQL on Xampp**
+Make sure that MySQL is on so that the local host database can be accessed.
+![Uploading image.png…]()
+
+
+8. **Continue on client side after Setup is done**
+ 
 ---
 
 ## 📁 Server-Side File Overview
