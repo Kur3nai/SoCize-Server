@@ -94,8 +94,8 @@ Alternatively, run specific queries by highlighting them and clicking Execute.
 
 6. . **Turn on MySQL on Xampp**
 Make sure that MySQL is on so that the local host database can be accessed.
-![Uploading image.png…]()
-
+[![Uploading image.png…]()
+](https://github.com/Kur3nai/SoCize-Server/blob/main/image_2025-07-06_204319062.png)
 
 8. **Continue on client side after Setup is done**
  
