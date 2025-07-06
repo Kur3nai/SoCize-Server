@@ -60,11 +60,32 @@ The **PHP server acts only as a file storage manager**, providing basic services
 
 ### Steps to Run the Application
 
-1. Clone both this client-side repo and the [SoCize-Server](https://github.com/Kur3nai/SoCize-Server) PHP backend.
-2. Set up the PHP files on your local server (e.g., XAMPP or MAMP).
-3. Make sure the backend is running and accessible via browser (e.g., `http://localhost/FileUpload.php`).
-4. Run the client-side UI from this repository and test upload/encryption/decryption flows.
+1. **Clone the repository**
+```console
+git clone https://github.com/YT-07/SoCize-Client.git
+```
 
+2. **Navigate to the project folder**
+```console
+cd SoCize-Client
+```
+
+3. **Open MySQL Workbench**
+Launch the application and connect to your MySQL server.
+
+Double-click your saved connection under "MySQL Connections" (or create one if needed).
+
+4. **Open the SQL File**
+Click File → Open SQL Script (or press Ctrl+O / Cmd+O).
+
+Navigate to SoCize-Server/Config/DatabaseQuery.sql
+
+The file will open in a new SQL tab.
+
+5. **Execute the SQL File**
+Click the lightning bolt icon ("Execute") or press Ctrl+Shift+Enter.
+
+Alternatively, run specific queries by highlighting them and clicking Execute.
 ---
 
 ## 📁 Server-Side File Overview
